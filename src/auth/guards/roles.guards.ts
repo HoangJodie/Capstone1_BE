@@ -8,14 +8,16 @@ export class RolesGuard implements CanActivate {
     canActivate(context: ExecutionContext): boolean {
         const roles = this.reflector.get<string[]>('roles', context.getHandler());
         if (!roles) {
-            return true;
+            return true; // Nếu không có yêu cầu roles cụ thể, cho phép truy cập
         }
 
         const request = context.switchToHttp().getRequest();
-        const user = request.user;
+        const user = request.user; // Lấy user từ request (đã được validate từ JwtStrategy)
 
-        // Kiểm tra role có trong token JWT không
-        return roles.includes(user.role); // user.role cần phải được kiểm tra
+        console.log('User:', user); // Log thông tin người dùng
+        console.log('Required Roles:', roles); // Log các role yêu cầu
+
+        // Kiểm tra role có phải là một trong các roles yêu cầu không
+        return roles.includes(user.role?.toString()); // Sử dụng user.role thay vì user.role_id
     }
 }
-

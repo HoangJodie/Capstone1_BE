@@ -1,42 +1,37 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AuthPayLoad } from './dto/auth.dto';
-
-
-const fakeUsers = [
-  {
-    id: 1,
-    username: 'hoang',
-    password: '123456',
-    role: 'admin'
-  },
-  {
-    id: 2,
-    username: 'anh',
-    password: '123456',
-    role: 'user'
-  }
-]
+import { DatabaseService } from 'src/database/database.service'; // Sử dụng DatabaseService
 
 @Injectable()
 export class AuthService {
-  constructor(private jtwService: JwtService) { }
+  constructor(private jwtService: JwtService, private databaseService: DatabaseService) {}
 
-  validateUser({ username, password }: AuthPayLoad) {
-    const findUser = fakeUsers.find((user) => user.username === username);
-    if (!findUser) return null;
-    if (password === findUser.password) {
-        const { password, ...user } = findUser;
-        return user; // Trả về thông tin người dùng, bao gồm cả role(ko co mat khau)
+  async validateUser({ username, password }: AuthPayLoad) {
+    // Tìm người dùng bằng username
+    const user = await this.databaseService.user.findFirst({
+      where: { username },
+    });
+  
+    if (!user) return null;
+  
+    // Kiểm tra mật khẩu
+    if (password === user.password) {
+      const { password, ...userData } = user;
+      return userData; // Trả về thông tin người dùng (không bao gồm mật khẩu)
     }
+  
     return null;
-}
-
+  }
+  
+  
 
   generateToken(user: any) {
-    return this.jtwService.sign({
-      username: user.username,
-      role: user.role  // Bao gồm role trong token
+    return this.jwtService.sign({
+      user_id: user.user_id,
+      username: user.username, // Đảm bảo username có mặt trong payload
+      role: user.role_id, // Bao gồm role
     });
   }
+  
 }
