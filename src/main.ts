@@ -6,7 +6,7 @@ async function bootstrap() {
 
   // Cấu hình CORS
   app.enableCors({
-    origin: ['http://localhost:3001'], // Địa chỉ của frontend
+    origin: ['http://localhost:5173'], // Địa chỉ của frontend
     credentials: true, // Cho phép gửi cookie (nếu cần)
   });
 
