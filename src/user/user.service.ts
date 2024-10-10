@@ -8,24 +8,24 @@ export class UserService {
   constructor(private readonly databaseService: DatabaseService) {}
 
   async create(createUserDto: Prisma.userCreateInput) {
-    // Kiểm tra nếu username đã tồn tại
     const existingUser = await this.databaseService.user.findUnique({
-      where: { username: createUserDto.username }, // Tìm theo username
+      where: { username: createUserDto.username },
     });
-
-    // Ném ra lỗi nếu username đã tồn tại
+  
     if (existingUser) {
       throw new ConflictException('Username already exists');
     }
-
-    // Mã hóa mật khẩu
+  
     const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
-
-    // Tạo user với mật khẩu đã mã hóa
+  
     return this.databaseService.user.create({
       data: {
         ...createUserDto,
         password: hashedPassword,
+        role_id: 3, // Thiết lập role_id mặc định
+        status_id: 1, // Thiết lập status_id mặc định
+        created_at: new Date(), // Thời gian tạo
+        updated_at: new Date(), // Thời gian cập nhật
       },
     });
   }

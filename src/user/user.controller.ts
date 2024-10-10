@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Get, Param, Patch, Delete } from '@nestjs/common';
+import { Body, Controller, Post, Get, Param, Patch, Delete, BadRequestException } from '@nestjs/common';
 import { UserService } from './user.service';
 import { Prisma } from '@prisma/client';
 import { UserDto } from './dto/user.dto';
@@ -8,8 +8,12 @@ export class UserController {
     constructor(private readonly userService: UserService) { }
 
     @Post()
-    createUser(@Body() userDto: UserDto) {
-        return this.userService.create(userDto);
+    async createUser(@Body() userDto: UserDto) {
+        try {
+            return await this.userService.create(userDto);
+        } catch (error) {
+            throw new BadRequestException(error.message); // Gửi thông báo lỗi về frontend
+        }
     }
 
     @Get()

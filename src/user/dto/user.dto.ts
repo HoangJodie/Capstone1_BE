@@ -3,7 +3,7 @@ import { IsEmail, IsNotEmpty, IsString, IsOptional, Length } from 'class-validat
 export class UserDto {
   @IsNotEmpty()
   @IsString()
-  @Length(3, 64) // Đặt giới hạn độ dài cho username
+  @Length(3, 64)
   username: string;
 
   @IsNotEmpty()
@@ -11,16 +11,12 @@ export class UserDto {
   password: string;
 
   @IsNotEmpty()
-  @IsEmail() // Kiểm tra định dạng email
+  @IsEmail()
   email: string;
 
   @IsOptional()
   @IsString()
   phoneNum?: string;
 
-  @IsOptional()
-  role_id?: number;
-
-  @IsOptional()
-  status_id?: number;
+  // Không yêu cầu role_id và status_id ở đây
 }
