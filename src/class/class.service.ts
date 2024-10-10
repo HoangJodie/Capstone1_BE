@@ -11,7 +11,7 @@ export class ClassService {
   async addClass(
     class_name: string,
     class_description: string,
-    class_type: string,
+    class_type: number,
     fee: number,
     start_date: Date,
     end_date: Date,
@@ -33,7 +33,7 @@ export class ClassService {
     class_id: number,
     class_name: string,
     class_description: string,
-    class_type: string,
+    class_type: number,
     fee: number,
     start_date: Date,
     end_date: Date,

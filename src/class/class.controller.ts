@@ -18,7 +18,7 @@ export class ClassController {
   async addClass(
     @Body('class_name') class_name: string,
     @Body('class_description') class_description: string,
-    @Body('class_type') class_type: string,
+    @Body('class_type') class_type: number,
     @Body('fee') fee: number,
     @Body('start_date') start_date: Date,
     @Body('end_date') end_date: Date,
@@ -39,7 +39,7 @@ export class ClassController {
     @Param('id') id: number,
     @Body('class_name') class_name: string,
     @Body('class_description') class_description: string,
-    @Body('class_type') class_type: string,
+    @Body('class_type') class_type: number,
     @Body('fee') fee: number,
     @Body('start_date') start_date: Date,
     @Body('end_date') end_date: Date,
