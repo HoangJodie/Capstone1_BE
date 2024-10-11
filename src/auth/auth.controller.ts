@@ -31,6 +31,6 @@ export class AuthController {
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('1') // Chỉ những người có role_id '1' mới truy cập được
     getAdminDashboard(@Req() req: Request) {
-        return  `Welcome to admin dashboard`; // Trả về thông điệp chào mừng
+        return `Welcome to admin dashboard`; // Trả về thông điệp chào mừng
     }
 }

@@ -32,7 +32,7 @@ model chatbotqueries {
 /// This model has been renamed to 'Renamedclass' during introspection, because the original name 'class' is reserved.
 model Renamedclass {
   class_id          Int       @id @default(autoincrement())
-  class_name        String?   @db.VarChar(50)
+  class_name        String    @db.VarChar(50)
   class_description String?   @db.VarChar(255)
   status_id         Int?
   class_type        Int?
@@ -47,7 +47,7 @@ model Renamedclass {
 model membership {
   membership_id   Int       @id @default(autoincrement())
   user_id         Int?
-  membership_type Int?
+  membership_type Int?      
   start_date      DateTime? @db.Date
   end_date        DateTime? @db.Date
   price           Decimal?  @db.Decimal(10, 2)
@@ -64,13 +64,13 @@ model schedule {
   start_hour  DateTime? @db.Time(0)
   end_hour    DateTime? @db.Time(0)
 
-  @@index([class_id], map: "fk_class_id")
+  @@index([class_id], map: "class_id")
 }
 
 model user {
   user_id    Int       @id @default(autoincrement())
-  username   String?   @unique(map: "unique_username") @db.VarChar(64)
-  password   String?   @db.VarChar(64)
+  username   String    @db.VarChar(64)
+  password   String    @db.VarChar(64)
   email      String    @db.VarChar(255)
   phoneNum   String?   @db.VarChar(20)
   role_id    Int?

@@ -7,52 +7,46 @@ import { Renamedclass } from '@prisma/client'; // Sử dụng mô hình Renamedc
 export class ClassController {
   constructor(private readonly classService: ClassService) {}
 
-  // Lấy tất cả các lớp hoặc lớp theo ID
+  // Lấy lớp theo ID
   @Get(':id?')
-  async getClass(@Param('id') id?: number): Promise<Renamedclass[]> {
-    return this.classService.getClass(id ? Number(id) : undefined);
+  async getClass(@Param('id') class_id?: number) {
+    return this.classService.getClass(class_id, null);
+  }
+
+  //Lấy tất cả các lớp
+  @Get()
+  async getAllClass() {
+    try {
+      const classes = await this.getAllClass();
+      console.log(classes);
+    } catch (error) {
+        console.error(error);
+    }
   }
 
   // Thêm một lớp mới
-  @Post()
-  async addClass(
-    @Body('class_name') class_name: string,
-    @Body('class_description') class_description: string,
-    @Body('class_type') class_type: number,
-    @Body('fee') fee: number,
-    @Body('start_date') start_date: Date,
-    @Body('end_date') end_date: Date,
-  ): Promise<Renamedclass> {
-    return this.classService.addClass(
-      class_name,
-      class_description,
-      class_type,
-      fee,
-      start_date,
-      end_date,
-    );
+  @Post('addClass')
+  async addClass(@Body() classData: { className: string; classDescription: string; classType: number; fee: number; startDate: Date; endDate: Date}) {
+    try {
+      const newClass = await this.classService.addClass(classData.className, classData.classDescription, classData.classType, classData.fee, classData.startDate, classData.endDate);
+      return newClass;
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
   }
 
   // Sửa một lớp
-  @Patch(':id')
-  async editClass(
-    @Param('id') id: number,
-    @Body('class_name') class_name: string,
-    @Body('class_description') class_description: string,
-    @Body('class_type') class_type: number,
-    @Body('fee') fee: number,
-    @Body('start_date') start_date: Date,
-    @Body('end_date') end_date: Date,
-  ): Promise<Renamedclass> {
-    return this.classService.editClass(
-      Number(id),
-      class_name,
-      class_description,
-      class_type,
-      fee,
-      start_date,
-      end_date,
-    );
+  @Patch(':id') //classs id ở đây là string
+  async editClass(@Param('id') classId: string, @Body() classData: { className: string; classDescription: string; statusId: number; classType: number; startDate: Date; endDate: Date; fee: number }) {
+    const id = parseInt(classId, 10) // chuyển string thành int
+    try {
+      const updatedClass = await this.classService.editClass(id, classData.className, classData.classDescription, classData.statusId, classData.classType, classData.fee, classData.startDate, classData.endDate);
+      return updatedClass;
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
   }
 
   // Xóa một lớp
@@ -60,4 +54,5 @@ export class ClassController {
   async deleteClass(@Param('id') id: number): Promise<Renamedclass> {
     return this.classService.deleteClass(Number(id));
   }
+
 }
