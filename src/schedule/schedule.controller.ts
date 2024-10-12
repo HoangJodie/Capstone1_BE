@@ -1,47 +1,74 @@
-/* eslint-disable prettier/prettier */
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, Patch, Post } from '@nestjs/common';
 import { ScheduleService } from './schedule.service';
 import { schedule } from '@prisma/client';
 
 @Controller('schedule')
 export class ScheduleController {
-    constructor(private readonly ScheduleService: ScheduleService){}
+    constructor(private readonly ScheduleService: ScheduleService) {}
 
-    //Lấy lịch theo id
-    @Get(':id?')
-    async getSchedule(@Param('id') schedule_id?: number) {
-        return this.ScheduleService.getSchedule(null, schedule_id);
+    // Lấy lịch theo id (không bao gồm thông tin lớp)
+    @Get(':id')
+    async getSchedule(@Param('id') schedule_id: string) {
+        const id = parseInt(schedule_id, 10);
+        if (isNaN(id)) {
+            throw new HttpException('Invalid schedule_id provided.', HttpStatus.BAD_REQUEST);
+        }
+        try {
+            return await this.ScheduleService.getSchedule(id); // Chỉ gọi hàm getSchedule với schedule_id
+        } catch (error) {
+            throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+        }
     }
 
-    //Thêm lịch mới
-    @Post('addSchedule')
-    async addSchedule(@Body() scheduleData: { classId: number; days: string; startHour: Date; endHour: Date })
-    {
+    // Lấy tất cả lịch của một lớp cụ thể (không bao gồm thông tin lớp)
+    @Get('class/:classId')
+    async getAllSchedulesByClass(@Param('classId') classId: string) {
+        const id = parseInt(classId, 10);
+        if (isNaN(id)) {
+            throw new HttpException('Invalid classId provided.', HttpStatus.BAD_REQUEST);
+        }
+        try {
+            return await this.ScheduleService.getAllSchedulesByClassId(id); // Gọi service để lấy danh sách lịch
+        } catch (error) {
+            throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+        }
+    }
+
+    // Thêm lịch mới
+    @Post()
+    async addSchedule(@Body() scheduleData: { classId: number; days: string; startHour: Date; endHour: Date }) {
         try {
             const schedule = await this.ScheduleService.addSchedule(scheduleData.classId, scheduleData.days, scheduleData.startHour, scheduleData.endHour);
             return schedule;
-          } catch (error) {
+        } catch (error) {
             console.error(error);
-            throw error;
-          }
+            throw new HttpException('Error adding schedule.', HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
-    //Sửa lịch
-    @Patch(':id') //schedule id ở đây là string
+    // Sửa lịch
+    @Patch(':id') // schedule id ở đây là string
     async editSchedule(@Param('id') scheduleId: string, @Body() scheduleData: { classId: number; days: string; startHour: Date; endHour: Date }) {
         const id = parseInt(scheduleId, 10);
+        if (isNaN(id)) {
+            throw new HttpException('Invalid schedule_id provided.', HttpStatus.BAD_REQUEST);
+        }
         try {
             const schedule = await this.ScheduleService.editSchedule(id, scheduleData.classId, scheduleData.days, scheduleData.startHour, scheduleData.endHour);
             return schedule;
-          } catch (error) {
+        } catch (error) {
             console.error(error);
-            throw error;
-          }
+            throw new HttpException('Error editing schedule.', HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
-    //Xóa lịch
+    // Xóa lịch
     @Delete(':id')
     async deleteClass(@Param('id') id: number): Promise<schedule> {
-        return this.ScheduleService.deleteSchedule(Number(id));
+        try {
+            return await this.ScheduleService.deleteSchedule(Number(id));
+        } catch (error) {
+            throw new HttpException('Error deleting schedule.', HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 }

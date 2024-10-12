@@ -1,13 +1,12 @@
 /* eslint-disable prettier/prettier */
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, InternalServerErrorException } from '@nestjs/common';
 import { DatabaseService } from 'src/database/database.service';
 import { Renamedclass } from '@prisma/client';
 
 @Injectable()
 export class ClassService {
-  constructor(private prisma: DatabaseService) {}
+  constructor(private prisma: DatabaseService) { }
 
-  // Thêm một lớp mới
   async addClass(
     class_name: string,
     class_description: string,
@@ -22,7 +21,7 @@ export class ClassService {
           class_name: class_name,
           class_description: class_description,
           status_id: 1,
-          class_type: class_type, //class_type Invalid value provided. Expected String or Null, provided Int.
+          class_type: class_type,
           start_date: start_date,
           end_date: end_date,
           fee: fee,
@@ -31,7 +30,7 @@ export class ClassService {
       return newClass;
     } catch (error) {
       console.error(error);
-      throw error;
+      throw new InternalServerErrorException('Unable to add class.');
     }
   }
 
@@ -52,8 +51,8 @@ export class ClassService {
         data: {
           class_name: class_name,
           class_description: class_description,
-          status_id: status_id,  
-          class_type: class_type, //class_type Invalid value provided. Expected String or Null, provided Int.
+          status_id: status_id,
+          class_type: class_type,
           start_date: start_date,
           end_date: end_date,
           fee: fee,
@@ -62,40 +61,89 @@ export class ClassService {
       return updatedClass;
     } catch (error) {
       console.error(error);
-      throw error;
+      throw new InternalServerErrorException('Unable to update class.');
     }
   }
 
   // Xóa một lớp
   async deleteClass(class_id: number): Promise<Renamedclass> {
-    return this.prisma.renamedclass.delete({
-      where: { class_id }, // Sử dụng class_id làm khóa
-    });
-  }
-
-  // Lấy lớp (theo ID)
-  async getClass(class_id?: number, schedule_id?: number): Promise<Renamedclass> {
-    if (class_id) {
-      return this.prisma.$queryRaw`
-        CALL GetClassAndScheduleByClassOrScheduleID(${class_id}, NULL);
-      `;
-    } else if (schedule_id) {
-      return this.prisma.$queryRaw`
-        CALL GetClassAndScheduleByClassOrScheduleID(NULL, ${schedule_id});
-      `;
-    } else {
-      throw new Error('Must provide either class_id or schedule_id');
+    try {
+      return await this.prisma.renamedclass.delete({
+        where: { class_id },
+      });
+    } catch (error) {
+      console.error(error);
+      throw new InternalServerErrorException('Unable to delete class.');
     }
   }
 
-  //Lấy tất cả lớp
-  async getAllClass(): Promise<Renamedclass[]>{
+  // Lấy thông tin lớp
+  async getClassInfo(class_id: number): Promise<any> {
     try {
-        const classes = await this.prisma.renamedclass.findMany();
-        return classes;
+      const result = await this.prisma.renamedclass.findUnique({
+        where: { class_id: class_id },
+        select: {
+          class_name: true,
+          class_description: true,
+          status_id: true,
+          class_type: true,
+          start_date: true,
+          end_date: true,
+          fee: true,
+        },
+      });
+
+      if (!result) {
+        throw new NotFoundException('Class not found.');
+      }
+      return result; // Trả về thông tin lớp
     } catch (error) {
-        console.error('Error fetching classes:', error);
-        throw new Error('Unable to fetch classes.');
+      console.error(error);
+      throw new InternalServerErrorException('Unable to fetch class info.');
+    }
+  }
+
+  // Lấy class và tất cả schedule của nó
+  async getClass(class_id: number): Promise<any> {
+    try {
+      const result: any[] = await this.prisma.$queryRaw`
+          CALL GetClassAndScheduleByClassOrScheduleID(${class_id}, null);
+      `;
+
+      if (result.length === 0) {
+        throw new NotFoundException('Class or schedule not found.');
+      }
+
+      const classData = result[0];
+      const schedules = result.map(schedule => ({
+        days: schedule.f7,
+        start_hour: schedule.f8,
+        end_hour: schedule.f9,
+      }));
+
+      return {
+        class_name: classData.f0,
+        class_description: classData.f1,
+        status_id: classData.f2,
+        class_type: classData.f3,
+        start_date: classData.f4,
+        end_date: classData.f5,
+        fee: classData.f6,
+        schedules: schedules,
+      };
+    } catch (error) {
+      console.error(error);
+      throw new InternalServerErrorException('Unable to fetch class and schedules.');
+    }
+  }
+
+  // Lấy tất cả lớp
+  async getAllClass(): Promise<Renamedclass[]> {
+    try {
+      return await this.prisma.renamedclass.findMany();
+    } catch (error) {
+      console.error('Error fetching classes:', error);
+      throw new InternalServerErrorException('Unable to fetch classes.');
     }
   }
 }
