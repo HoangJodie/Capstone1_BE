@@ -39,6 +39,7 @@ model Renamedclass {
   start_date        DateTime? @db.Date
   end_date          DateTime? @db.Date
   fee               Decimal?  @db.Decimal(10, 2)
+  image_url         String?   @db.Text
 
   @@index([status_id], map: "status_id")
   @@map("class")
@@ -90,4 +91,33 @@ model user_class {
   @@id([user_id, class_id])
   @@index([class_id], map: "class_id")
   @@index([status_id], map: "status_id")
+}
+
+model exercisepost {
+  post_id     Int       @id @default(autoincrement())
+  exercise_id String    @db.VarChar(10)
+  name        String    @db.VarChar(255)
+  body_part   String    @db.VarChar(50)
+  equipment   String?   @db.VarChar(50)
+  target      String    @db.VarChar(100)
+  gif_url     String?   @db.VarChar(255)
+  created_at  DateTime? @default(now()) @db.Timestamp(0)
+  updated_at  DateTime? @default(now()) @db.Timestamp(0)
+}
+
+model instructions {
+  id          Int     @id @default(autoincrement())
+  post_id     Int?
+  step_number Int?
+  instruction String? @db.Text
+
+  @@index([post_id], map: "post_id")
+}
+
+model secondarymuscles {
+  id          Int     @id @default(autoincrement())
+  post_id     Int?
+  muscle_name String? @db.VarChar(100)
+
+  @@index([post_id], map: "post_id")
 }
