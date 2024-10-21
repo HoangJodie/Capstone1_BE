@@ -1,9 +1,33 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query, Body, Post, UseInterceptors, UploadedFile, NotFoundException } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ExerciseService } from './exercise.service';
+import { CreateExerciseDto } from './dto/exercise.dto';
 
 @Controller('exercises')
 export class ExerciseController {
-  constructor(private readonly exerciseService: ExerciseService) {}
+  constructor(private readonly exerciseService: ExerciseService) { }
+
+  // Tạo endpoint GET để lấy tất cả các exercises
+  @Get()
+  async getAllExercises() {
+    return this.exerciseService.getAllExercises();
+  }
+
+  @Post()
+  @UseInterceptors(FileInterceptor('file')) // Interceptor để upload file
+  async create(
+    @Body() createExerciseDto: CreateExerciseDto,
+    @UploadedFile() file?: Express.Multer.File, // Nhận file từ request
+  ) {
+    return this.exerciseService.createExercise(createExerciseDto, file);
+  }
+
+  @Get(':postId')
+  async getExerciseById(@Param('postId') postId: string): Promise<CreateExerciseDto> {
+    const exercise = await this.exerciseService.getExerciseByPostId(Number(postId)); // Chuyển đổi postId thành number
+    return exercise; // Trả về bài tập
+  }
+
 
   // Danh sách body parts
   @Get('bodyparts')
@@ -23,31 +47,31 @@ export class ExerciseController {
     return this.exerciseService.getDistinctTargets();
   }
 
-//   // Danh sách bài tập theo body part
-//   @Get('bodyparts/:body_part')
-//   getExercisesByBodyPart(@Param('body_part') bodyPart: string) {
-//     return this.exerciseService.getExercisesByBodyPart(bodyPart);
-//   }
+  // // Danh sách bài tập theo body part
+  // @Get('bodyparts/:body_part')
+  // getExercisesByBodyPart(@Param('body_part') bodyPart: string) {
+  //   return this.exerciseService.getExercisesByBodyPart(bodyPart);
+  // }
 
-//   // Danh sách bài tập theo equipment
-//   @Get('equipment/:equipment')
-//   getExercisesByEquipment(@Param('equipment') equipment: string) {
-//     return this.exerciseService.getExercisesByEquipment(equipment);
-//   }
+  // // Danh sách bài tập theo equipment
+  // @Get('equipment/:equipment')
+  // getExercisesByEquipment(@Param('equipment') equipment: string) {
+  //   return this.exerciseService.getExercisesByEquipment(equipment);
+  // }
 
-//   // Danh sách bài tập theo target muscle
-//   @Get('targets/:target')
-//   getExercisesByTarget(@Param('target') target: string) {
-//     return this.exerciseService.getExercisesByTarget(target);
-//   }
+  // // Danh sách bài tập theo target muscle
+  // @Get('targets/:target')
+  // getExercisesByTarget(@Param('target') target: string) {
+  //   return this.exerciseService.getExercisesByTarget(target);
+  // }
 
-//   // Kết hợp tìm kiếm theo nhiều tiêu chí
-//   @Get('search')
-//   searchExercises(
-//     @Query('body_part') bodyPart?: string,
-//     @Query('equipment') equipment?: string,
-//     @Query('target') target?: string,
-//   ) {
-//     return this.exerciseService.searchExercises(bodyPart, equipment, target);
-//   }
+  // // Kết hợp tìm kiếm theo nhiều tiêu chí
+  // @Get('search')
+  // searchExercises(
+  //   @Query('body_part') bodyPart?: string,
+  //   @Query('equipment') equipment?: string,
+  //   @Query('target') target?: string,
+  // ) {
+  //   return this.exerciseService.searchExercises(bodyPart, equipment, target);
+  // }
 }

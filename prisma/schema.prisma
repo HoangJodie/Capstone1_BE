@@ -111,7 +111,7 @@ model instructions {
   step_number Int?
   instruction String? @db.Text
 
-  @@index([post_id], map: "post_id")
+  @@index([post_id], map: "fk_post_instructions")
 }
 
 model secondarymuscles {
@@ -119,5 +119,5 @@ model secondarymuscles {
   post_id     Int?
   muscle_name String? @db.VarChar(100)
 
-  @@index([post_id], map: "post_id")
+  @@index([post_id], map: "fk_post_secondarymuscles")
 }

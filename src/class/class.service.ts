@@ -105,6 +105,7 @@ export class ClassService {
           start_date: true,
           end_date: true,
           fee: true,
+          image_url: true, 
         },
       });
 
