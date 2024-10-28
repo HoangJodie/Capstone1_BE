@@ -6,11 +6,6 @@ import { AuthModule } from './auth/auth.module';
 import { DatabaseModule } from './database/database.module';
 import { ClassModule } from './class/class.module';
 import { ScheduleModule } from './schedule/schedule.module';
-<<<<<<< Updated upstream
-
-@Module({
-  imports: [AuthModule, DatabaseModule, ClassModule, ScheduleModule],
-=======
 import { UserModule } from './user/user.module';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { ExerciseModule } from './exercise/exercise.module';
@@ -30,7 +25,6 @@ import { UserClassModule } from './user_class/user_class.module';
     ExerciseModule,
     UserClassModule,
   ],
->>>>>>> Stashed changes
   controllers: [AppController],
   providers: [AppService],
 })
