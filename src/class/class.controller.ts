@@ -116,31 +116,32 @@ export class ClassController {
   
 
 
-  @Patch(':id') // class ID ở đây là string
-@UseInterceptors(FileInterceptor('file')) // Sử dụng FileInterceptor để nhận file
+  @Patch(':id')
+@UseInterceptors(FileInterceptor('file'))
 async editClass(
   @Param('id') classId: string,
   @Body() classData: {
     className: string;
     classDescription: string;
-    statusId: number;
-    classType: string;
+    statusId: string; // Keep this as string for parsing
+    classType: string; // Keep this as string for parsing
     startDate: string;
-    endDate: string;
-    fee: string;
-    oldImageId?: string; // ID hình ảnh cũ, nếu có
+    endDate: string; // Keep this as string for parsing
+    fee: string; // Keep this as string for parsing
+    oldImageId?: string;
   },
   @UploadedFile() file: Express.Multer.File
 ) {
-  const id = parseInt(classId, 10); // chuyển string thành int
+  const id = parseInt(classId, 10);
   if (isNaN(id)) {
     throw new HttpException('Invalid class_id provided.', HttpStatus.BAD_REQUEST);
   }
 
   try {
     console.log('Received Class Data:', classData);
+    
     const startDate = parseISO(classData.startDate.trim());
-    const endDate = parseISO(classData.endDate.trim());
+    const endDate = parseISO(classData.endDate.trim().replace(/\n/g, '')); // Trim newline
 
     if (!isValid(startDate) || !isValid(endDate)) {
       throw new HttpException('Invalid date provided.', HttpStatus.BAD_REQUEST);
@@ -149,26 +150,24 @@ async editClass(
     let imageUrl: string | undefined;
     let oldImageId: string | undefined;
 
-    // Nếu có file hình ảnh được tải lên
     if (file) {
       const uploadResult = await this.cloudinaryService.uploadImage(file);
-      imageUrl = uploadResult.secure_url; // Lưu URL hình ảnh mới
-      oldImageId = classData.oldImageId; // Lưu ID hình ảnh cũ
-    } else {
-      imageUrl = undefined; // Không cập nhật hình ảnh nếu không có file
+      imageUrl = uploadResult.secure_url;
+      oldImageId = classData.oldImageId;
     }
 
+    // Parse to integers
     const updatedClass = await this.classService.editClass(
       id,
       classData.className,
       classData.classDescription,
-      classData.statusId,
-      parseInt(classData.classType),
-      parseInt(classData.fee),
+      parseInt(classData.statusId), // Convert to integer
+      parseInt(classData.classType), // Convert to integer
+      parseInt(classData.fee), // Convert to integer
       startDate,
       endDate,
       imageUrl,
-      oldImageId // Gửi ID hình ảnh cũ
+      oldImageId
     );
 
     return updatedClass;
@@ -177,6 +176,7 @@ async editClass(
     throw new HttpException('Unable to update class.', HttpStatus.INTERNAL_SERVER_ERROR);
   }
 }
+
 
   
 
