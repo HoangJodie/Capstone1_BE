@@ -10,6 +10,7 @@ import { ScheduleModule } from './schedule/schedule.module';
 import { UserModule } from './user/user.module';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { ExerciseModule } from './exercise/exercise.module';
+import { UserClassModule } from './user_class/user_class.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { ExerciseModule } from './exercise/exercise.module';
     UserModule,
     CloudinaryModule,
     ExerciseModule,
+    UserClassModule
   ],
   controllers: [AppController],
   providers: [AppService],
