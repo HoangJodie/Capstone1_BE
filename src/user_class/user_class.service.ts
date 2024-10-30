@@ -42,6 +42,38 @@ export class UserClassService {
     return entry;
   }
 
+  // Method to check if a user is already joined in a class (new)
+  async getStatus(userId: number, classId: number): Promise<{ isJoined: boolean }> {
+    const entry = await this.findOne(userId, classId);
+    return { isJoined: !!entry }; // Return true if association exists, otherwise false
+  }
+
+  // Fetch users who are in a specific class
+async getUsersByClassId(classId: number) {
+  // Fetching user-class associations for the given classId
+  const userClasses = await this.databaseService.user_class.findMany({
+    where: { class_id: classId }, // Use the database service to find associations
+  });
+
+  // If there are no associations, return an empty array
+  if (!userClasses.length) return [];
+
+  // Extract user IDs from the associations
+  const userIds = userClasses.map(userClass => userClass.user_id);
+
+  // Fetch users based on user IDs
+  const users = await this.databaseService.user.findMany({
+    where: { user_id: { in: userIds } }, // Change 'id' to 'user_id' or the correct field name
+  });
+
+  // Map users to include only necessary data
+  return users.map(user => ({
+    userId: user.user_id, // Change 'id' to 'user_id' or the correct field name
+    username: user.username,
+    role_id: user.role_id,
+  }));
+}
+
   // Delete a user from a class
   async deleteUserFromClass(userId: number, classId: number) {
     const existingEntry = await this.databaseService.user_class.findUnique({
