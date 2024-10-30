@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import { Body, Controller, Post, Get, Param, Patch, Delete, BadRequestException } from '@nestjs/common';
 import { UserService } from './user.service';
 import { Prisma } from '@prisma/client';

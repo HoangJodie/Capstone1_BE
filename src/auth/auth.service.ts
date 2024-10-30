@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AuthPayLoad } from './dto/auth.dto';
@@ -7,7 +8,10 @@ import { AuthModule } from './auth.module';
 
 @Injectable()
 export class AuthService {
-  constructor(private jwtService: JwtService, private databaseService: DatabaseService) { }
+  constructor(
+    private jwtService: JwtService,
+    private databaseService: DatabaseService,
+  ) {}
 
   // Xác thực người dùng và kiểm tra mật khẩu đã mã hóa
   async validateUser({ username, password }: AuthPayLoad) {
@@ -28,17 +32,23 @@ export class AuthService {
 
   // auth.service.ts
   generateTokens(user: any) {
-    const accessToken = this.jwtService.sign({
-      user_id: user.user_id,
-      username: user.username,
-      role: user.role_id,
-    }, { expiresIn: AuthModule.accessTokenExpiration });  // Sử dụng thời gian hết hạn từ module
+    const accessToken = this.jwtService.sign(
+      {
+        user_id: user.user_id,
+        username: user.username,
+        role: user.role_id,
+      },
+      { expiresIn: AuthModule.accessTokenExpiration },
+    ); // Sử dụng thời gian hết hạn từ module
 
-    const refreshToken = this.jwtService.sign({
-      user_id: user.user_id,
-      username: user.username,
-      role: user.role_id,
-    }, { expiresIn: AuthModule.refreshTokenExpiration });  // Sử dụng thời gian hết hạn từ module
+    const refreshToken = this.jwtService.sign(
+      {
+        user_id: user.user_id,
+        username: user.username,
+        role: user.role_id,
+      },
+      { expiresIn: AuthModule.refreshTokenExpiration },
+    ); // Sử dụng thời gian hết hạn từ module
 
     return { accessToken, refreshToken };
   }
@@ -60,5 +70,4 @@ export class AuthService {
       throw new Error('Invalid refresh token');
     }
   }
-
 }

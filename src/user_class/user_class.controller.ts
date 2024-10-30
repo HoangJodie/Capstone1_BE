@@ -22,12 +22,36 @@ export class UserClassController {
 
   // Endpoint to find a specific user-class association
   @Get(':userId/:classId')
-  async findOne(@Param('userId') userId: number, @Param('classId') classId: number) {
+async findOne(
+  @Param('userId') userId: string,
+  @Param('classId') classId: string,
+) {
+  // Convert to integers
+  const userIdInt = parseInt(userId, 10);
+  const classIdInt = parseInt(classId, 10);
+
+  // Pass integers to the service
+  const entry = await this.userClassService.findOne(userIdInt, classIdInt);
+  if (!entry) {
+    throw new NotFoundException('User-Class association not found');
+  }
+  return entry;
+}
+
+  // New endpoint to check if the user has already joined the class
+  @Get('status')
+  async checkJoinStatus(
+    @Query('userId') userId: number,
+    @Query('classId') classId: number,
+  ) {
     const entry = await this.userClassService.findOne(userId, classId);
-    if (!entry) {
-      throw new NotFoundException('User-Class association not found');
-    }
-    return entry;
+    return { isJoined: !!entry }; // Return true if association exists, otherwise false
+  }
+
+  // New endpoint to get users who have joined a specific class
+  @Get('users/:classId')
+  async getUsersInClass(@Param('classId') classId: number) {
+    return this.userClassService.getUsersByClassId(classId);
   }
 
   // Endpoint to delete a user from a class
