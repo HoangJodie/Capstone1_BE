@@ -1,4 +1,5 @@
 export class CreateExerciseDto {
+  readonly post_id: number;
   readonly exercise_id: string;
   readonly name: string;
   readonly body_part: string;

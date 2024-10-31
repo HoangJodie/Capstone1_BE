@@ -4,7 +4,7 @@ import { UserClassService } from './user_class.service';
 
 @Controller('user-class')
 export class UserClassController {
-  constructor(private readonly userClassService: UserClassService) {}
+  constructor(private readonly userClassService: UserClassService) { }
 
   // Endpoint to add a user to a class
   @Post()
@@ -22,31 +22,36 @@ export class UserClassController {
 
   // Endpoint to find a specific user-class association
   @Get(':userId/:classId')
-async findOne(
-  @Param('userId') userId: string,
-  @Param('classId') classId: string,
-) {
-  // Convert to integers
-  const userIdInt = parseInt(userId, 10);
-  const classIdInt = parseInt(classId, 10);
+  async findOne(
+    @Param('userId') userId: string,
+    @Param('classId') classId: string,
+  ) {
+    // Convert to integers
+    const userIdInt = parseInt(userId, 10);
+    const classIdInt = parseInt(classId, 10);
 
-  // Pass integers to the service
-  const entry = await this.userClassService.findOne(userIdInt, classIdInt);
-  if (!entry) {
-    throw new NotFoundException('User-Class association not found');
+    // Pass integers to the service
+    const entry = await this.userClassService.findOne(userIdInt, classIdInt);
+    if (!entry) {
+      throw new NotFoundException('User-Class association not found');
+    }
+    return entry;
   }
-  return entry;
-}
 
   // New endpoint to check if the user has already joined the class
   @Get('status')
   async checkJoinStatus(
-    @Query('userId') userId: number,
-    @Query('classId') classId: number,
+    @Query('userId') userId: string,
+    @Query('classId') classId: string,
   ) {
-    const entry = await this.userClassService.findOne(userId, classId);
+    const userIdInt = parseInt(userId, 10);
+    const classIdInt = parseInt(classId, 10);
+
+    const entry = await this.userClassService.findOne(userIdInt, classIdInt);
     return { isJoined: !!entry }; // Return true if association exists, otherwise false
   }
+
+
 
   // New endpoint to get users who have joined a specific class
   @Get('users/:classId')
