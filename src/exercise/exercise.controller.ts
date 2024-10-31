@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, Body, Post, UseInterceptors, UploadedFile, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Param, Query, Body, Post,Delete, UseInterceptors, UploadedFile, NotFoundException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ExerciseService } from './exercise.service';
 import { CreateExerciseDto } from './dto/exercise.dto';
@@ -27,6 +27,11 @@ export class ExerciseController {
     const exercise = await this.exerciseService.getExerciseByPostId(Number(postId)); // Chuyển đổi postId thành number
     return exercise; // Trả về bài tập
   }
+
+  @Delete(':postId')
+async deleteExerciseById(@Param('postId') postId: string): Promise<{ message: string }> {
+    return await this.exerciseService.deleteExerciseByPostId(Number(postId));
+}
 
 
   // Danh sách body parts

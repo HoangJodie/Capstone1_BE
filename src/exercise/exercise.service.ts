@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { DatabaseService } from 'src/database/database.service';
 import { CreateExerciseDto } from './dto/exercise.dto';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
@@ -46,7 +46,7 @@ export class ExerciseService {
         });
   
         return {
-          id: exercise.exercise_id,
+          id: exercise.post_id,
           name: exercise.name,
           bodyPart: exercise.body_part,
           equipment: exercise.equipment,
@@ -105,6 +105,7 @@ export class ExerciseService {
   
     // Trả về thông tin bài tập với hướng dẫn và cơ phụ
     return {
+      post_id: exercise.post_id,
       exercise_id: exercise.exercise_id,
       name: exercise.name,
       body_part: exercise.body_part,
@@ -122,64 +123,94 @@ export class ExerciseService {
 
   async createExercise(data: CreateExerciseDto, file?: Express.Multer.File) {
     let gifUrl = data.gif_url;
-  
+
     // Nếu có file ảnh gif trong request, upload lên Cloudinary
     if (file) {
-      try {
-        const uploadResult = await this.cloudinaryService.uploadImage(file);
-        gifUrl = uploadResult.secure_url; // Lấy URL sau khi upload thành công
-      } catch (error) {
-        throw new InternalServerErrorException('Failed to upload gif image');
-      }
+        try {
+            const uploadResult = await this.cloudinaryService.uploadImage(file);
+            gifUrl = uploadResult.secure_url;
+        } catch (error) {
+            throw new InternalServerErrorException('Failed to upload gif image');
+        }
     }
-  
+
     // Bắt đầu lưu exercise chính
     const newExercise = await this.prisma.exercisepost.create({
-      data: {
-        exercise_id: data.exercise_id,
-        name: data.name,
-        body_part: data.body_part,
-        equipment: data.equipment,
-        target: data.target,
-        gif_url: gifUrl, // Lưu URL của gif vào database
-      },
+        data: {
+            exercise_id: data.exercise_id,
+            name: data.name,
+            body_part: data.body_part,
+            equipment: data.equipment,
+            target: data.target,
+            gif_url: gifUrl,
+        },
+    });
+
+    // Lưu instructions
+    if (data.instructions && Array.isArray(data.instructions)) {
+        await Promise.all(
+            data.instructions.map(async (instruction, index) => {
+                if (typeof instruction !== 'string' || instruction.trim() === '') {
+                    throw new BadRequestException('Invalid instruction format');
+                }
+
+                await this.prisma.instructions.create({
+                    data: {
+                        post_id: newExercise.post_id,
+                        step_number: index + 1, // Sử dụng index để tạo số thứ tự bắt đầu từ 1
+                        instruction: instruction.trim(), // Lưu instruction đầy đủ
+                    },
+                });
+            }),
+        );
+    }
+
+    // Lưu secondary muscles
+    if (data.secondaryMuscles && Array.isArray(data.secondaryMuscles)) {
+        await Promise.all(
+            data.secondaryMuscles.map((muscle) =>
+                this.prisma.secondarymuscles.create({
+                    data: {
+                        post_id: newExercise.post_id,
+                        muscle_name: muscle,
+                    },
+                }),
+            ),
+        );
+    }
+
+    return newExercise;
+}
+
+
+
+  
+  
+  async deleteExerciseByPostId(postId: number): Promise<{ message: string }> {
+    // Kiểm tra xem bài tập có tồn tại không
+    const exercise = await this.prisma.exercisepost.findUnique({
+      where: { post_id: postId },
     });
   
-    // Lưu instructions (cấu trúc { [step_number: number]: string }[])
-    if (data.instructions && data.instructions.length > 0) {
-      await Promise.all(
-        data.instructions.map((instructionObj) => {
-          const stepNumber = Object.keys(instructionObj)[0]; // Lấy step_number từ key
-          const instruction = instructionObj[stepNumber]; // Lấy instruction từ value
-          
-          return this.prisma.instructions.create({
-            data: {
-              post_id: newExercise.post_id,
-              step_number: parseInt(stepNumber, 10), // Đảm bảo step_number là số nguyên
-              instruction: instruction,
-            },
-          });
-        }),
-      );
+    if (!exercise) {
+      throw new NotFoundException(`Exercise with post ID ${postId} not found`);
     }
-  
-    // Lưu secondary muscles
-    if (data.secondaryMuscles && data.secondaryMuscles.length > 0) {
-      await Promise.all(
-        data.secondaryMuscles.map((muscle) =>
-          this.prisma.secondarymuscles.create({
-            data: {
-              post_id: newExercise.post_id,
-              muscle_name: muscle,
-            },
-          }),
-        ),
-      );
-    }
-  
-    return newExercise;
-  }
-  
+
+    // Xóa các instructions và secondary muscles liên quan
+    await this.prisma.$transaction([
+      this.prisma.instructions.deleteMany({
+        where: { post_id: postId },
+      }),
+      this.prisma.secondarymuscles.deleteMany({
+        where: { post_id: postId },
+      }),
+      this.prisma.exercisepost.delete({
+        where: { post_id: postId },
+      }),
+    ]);
+
+    return { message: `Exercise with post ID ${postId} has been deleted successfully` };
+}
 
 
 
