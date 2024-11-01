@@ -48,6 +48,10 @@ export class UserService {
     return user;
   }
 
+  async findByStatus(status_id: number) {
+    return this.databaseService.user.findMany({ where: { status_id } });
+  }
+
   async update(id: number, updateUserDto: Prisma.userUpdateInput) {
     const existingUser = await this.databaseService.user.findUnique({
       where: { user_id: id },

@@ -1,5 +1,5 @@
 /* eslint-disable prettier/prettier */
-import { Controller, Post, Delete, Get, Param, Body, Query, NotFoundException } from '@nestjs/common';
+import { Controller, Post, Delete, Patch, Get, Param, Body, Query, NotFoundException } from '@nestjs/common';
 import { UserClassService } from './user_class.service';
 
 @Controller('user-class')
@@ -26,11 +26,9 @@ export class UserClassController {
     @Param('userId') userId: string,
     @Param('classId') classId: string,
   ) {
-    // Convert to integers
     const userIdInt = parseInt(userId, 10);
     const classIdInt = parseInt(classId, 10);
 
-    // Pass integers to the service
     const entry = await this.userClassService.findOne(userIdInt, classIdInt);
     if (!entry) {
       throw new NotFoundException('User-Class association not found');
@@ -51,16 +49,28 @@ export class UserClassController {
     return { isJoined: !!entry }; // Return true if association exists, otherwise false
   }
 
+  // New endpoint to get users who have joined a specific class by status
+  @Get('status/:statusId')
+  async findByStatus(@Param('statusId') statusId: number) {
+    return this.userClassService.findByStatus(statusId);
+  }
 
-
-  // New endpoint to get users who have joined a specific class
-  @Get('users/:classId')
-  async getUsersInClass(@Param('classId') classId: number) {
-    return this.userClassService.getUsersByClassId(classId);
+  // Endpoint to update user_class status_id
+  @Patch(':userId/:classId')
+  async updateStatus(
+    @Param('userId') userId: string,
+    @Param('classId') classId: string,
+    @Body('statusId') statusId: number,
+  ) {
+    const updatedRecord = await this.userClassService.updateStatus(+userId, +classId, statusId);
+    if (!updatedRecord) {
+      throw new NotFoundException('User-Class association not found');
+    }
+    return updatedRecord;
   }
 
   // Endpoint to delete a user from a class
-  @Delete(':id')
+  @Delete()
   async deleteUserFromClass(
     @Query('userId') userId: number,
     @Query('classId') classId: number,

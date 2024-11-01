@@ -5,6 +5,7 @@ import { Renamedclass } from '@prisma/client'; // Sử dụng mô hình Renamedc
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { isValid, parseISO } from 'date-fns';
+import { NotFoundException } from '@nestjs/common';
 
 @Controller('classes')
 export class ClassController {
@@ -52,6 +53,12 @@ export class ClassController {
       console.error(error);
       throw new HttpException('Class not found.', HttpStatus.NOT_FOUND);
     }
+  }
+
+  //lấy lớp theo status_id
+  @Get('status/:statusId')
+  findByStatus(@Param('statusId') statusId: string) {
+      return this.classService.findByStatus(+statusId);
   }
 
   @Post()
@@ -110,10 +117,6 @@ export class ClassController {
       throw new InternalServerErrorException('Unable to add class.');
     }
   }
-  
-
-  
-  
 
 
   @Patch(':id')
@@ -178,7 +181,18 @@ async editClass(
 }
 
 
-  
+    // sửa status id của lớp
+    @Patch(':id/status')
+    async updateClassStatus(
+      @Param('id') classId: string,
+      @Body('statusId') statusId: number,
+    ) {
+      const updatedClass = await this.classService.updateStatus(+classId, statusId);
+      if (!updatedClass) {
+        throw new NotFoundException('Class not found');
+      }
+      return updatedClass;
+    }
 
   // Xóa một lớp
   @Delete(':id')

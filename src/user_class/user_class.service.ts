@@ -40,7 +40,12 @@ export class UserClassService {
     });
   }
 
+  
 
+  // Retrieve user-class associations by status_id
+  async findByStatus(statusId: number) {
+    return this.databaseService.user_class.findMany({ where: { status_id: statusId } });
+  }
 
   // Method to check if a user is already joined in a class (new)
   async getStatus(userId: number, classId: number): Promise<{ isJoined: boolean }> {
@@ -66,13 +71,30 @@ export class UserClassService {
       where: { user_id: { in: userIds } }, // Change 'id' to 'user_id' or the correct field name
     });
 
-    // Map users to include only necessary data
-    return users.map(user => ({
-      userId: user.user_id, // Change 'id' to 'user_id' or the correct field name
-      username: user.username,
-      role_id: user.role_id,
-    }));
-  }
+  // Map users to include only necessary data
+  return users.map(user => ({
+    userId: user.user_id, // Change 'id' to 'user_id' or the correct field name
+    username: user.username,
+    role_id: user.role_id,
+  }));
+}
+
+// Update the status_id of a specific user-class association
+async updateStatus(userId: number, classId: number, statusId: number) {
+  const updatedRecord = await this.databaseService.user_class.update({
+    where: {
+      user_id_class_id: {
+        user_id: userId,
+        class_id: classId,
+      },
+    },
+    data: {
+      status_id: statusId,
+    },
+  });
+  return updatedRecord;
+}
+
 
   // Delete a user from a class
   async deleteUserFromClass(userId: number, classId: number) {
