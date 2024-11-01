@@ -79,6 +79,19 @@ export class ClassService {
     }
   }
   
+  // sửa status id của class
+  async updateStatus(classId: number, statusId: number) {
+    const updatedClass = await this.prisma.renamedclass.update({
+      where: { class_id: classId }, // Assuming 'id' is the primary key for classes
+      data: { status_id: statusId },
+    });
+
+    if (!updatedClass) {
+      throw new NotFoundException('Class not found');
+    }
+
+    return updatedClass;
+  }
   
   // Xóa một lớp
   async deleteClass(class_id: number): Promise<Renamedclass> {
@@ -151,6 +164,11 @@ export class ClassService {
       console.error(error);
       throw new InternalServerErrorException('Unable to fetch class and schedules.');
     }
+  }
+
+  //lấy class dựa trên status_id
+  async findByStatus(status_id: number) {
+    return this.prisma.renamedclass.findMany({ where: { status_id } });
   }
 
   // Lấy tất cả các lớp và trả về kèm với URL hình ảnh từ database
