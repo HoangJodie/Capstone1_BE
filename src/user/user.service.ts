@@ -49,6 +49,7 @@ export class UserService {
   }
 
   async update(id: number, updateUserDto: Prisma.userUpdateInput) {
+    // Tìm người dùng hiện tại
     const existingUser = await this.databaseService.user.findUnique({
       where: { user_id: id },
     });
@@ -57,10 +58,15 @@ export class UserService {
       throw new NotFoundException('User not found');
     }
 
-    // Kiểm tra nếu password là chuỗi trước khi mã hóa
-    if (typeof updateUserDto.password === 'string') {
-      const hashedPassword = await bcrypt.hash(updateUserDto.password, 10);
-      updateUserDto.password = hashedPassword; // Gán mật khẩu đã mã hóa
+    // Kiểm tra nếu người dùng muốn cập nhật mật khẩu
+    if (updateUserDto.password) {
+      if (typeof updateUserDto.password === 'string') {
+        const hashedPassword = await bcrypt.hash(updateUserDto.password, 10);
+        updateUserDto.password = hashedPassword; // Gán mật khẩu đã mã hóa
+      }
+    } else {
+      // Nếu không có mật khẩu mới, giữ nguyên mật khẩu hiện tại
+      delete updateUserDto.password;
     }
 
     return this.databaseService.user.update({
@@ -70,6 +76,7 @@ export class UserService {
       data: updateUserDto,
     });
   }
+
 
   async remove(id: number) {
     const existingUser = await this.databaseService.user.findUnique({

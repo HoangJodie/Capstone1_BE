@@ -32,26 +32,32 @@ export class AuthService {
 
   // auth.service.ts
   generateTokens(user: any) {
-    const accessToken = this.jwtService.sign(
-      {
-        user_id: user.user_id,
-        username: user.username,
-        role: user.role_id,
-      },
-      { expiresIn: AuthModule.accessTokenExpiration },
-    ); // Sử dụng thời gian hết hạn từ module
-
-    const refreshToken = this.jwtService.sign(
-      {
-        user_id: user.user_id,
-        username: user.username,
-        role: user.role_id,
-      },
-      { expiresIn: AuthModule.refreshTokenExpiration },
-    ); // Sử dụng thời gian hết hạn từ module
-
-    return { accessToken, refreshToken };
+    try {
+      const accessToken = this.jwtService.sign(
+        {
+          user_id: user.user_id,
+          username: user.username,
+          role: user.role_id,
+        },
+        { expiresIn: AuthModule.accessTokenExpiration },
+      );
+  
+      const refreshToken = this.jwtService.sign(
+        {
+          user_id: user.user_id,
+          username: user.username,
+          role: user.role_id,
+        },
+        { expiresIn: AuthModule.refreshTokenExpiration },
+      );
+  
+      return { accessToken, refreshToken };
+    } catch (error) {
+      console.error('Error generating tokens:', error.message);
+      throw new Error('Failed to generate tokens');
+    }
   }
+  
 
   // Xử lý refresh token
   async refreshToken(refreshToken: string) {
