@@ -1,17 +1,23 @@
 /* eslint-disable prettier/prettier */
-import { Controller, Get, Param, Post, Body, Patch, Delete, HttpException, HttpStatus, UseInterceptors, UploadedFile, InternalServerErrorException } from '@nestjs/common';
+import { Controller, Get, Param, Post, Body, Patch, Delete, HttpException, HttpStatus, UseInterceptors, UploadedFile, InternalServerErrorException, UseGuards, Req } from '@nestjs/common';
 import { ClassService } from './class.service';
 import { Renamedclass } from '@prisma/client'; // Sử dụng mô hình Renamedclass
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { isValid, parseISO } from 'date-fns';
+import { NotFoundException } from '@nestjs/common';
+import { JwtAuthGuard } from 'src/auth/guards/jwt.guard';
+import { RolesGuard } from 'src/auth/guards/roles.guards';
+import { Roles } from 'src/auth/decorators/roles.decorators';
+import { Request } from 'express';
+
 
 @Controller('classes')
 export class ClassController {
   constructor(
     private readonly classService: ClassService,
     private readonly cloudinaryService: CloudinaryService // Inject CloudinaryService
-  ) {}
+  ) { }
 
   // Lấy tất cả các lớp và trả về kèm theo URL hình ảnh
   @Get()
@@ -24,6 +30,22 @@ export class ClassController {
       throw new HttpException('Unable to fetch classes.', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
+
+  @Get('owned')
+@UseGuards(JwtAuthGuard) // Bảo vệ endpoint bằng guard
+async getClassesOwnedByPT(@Req() req): Promise<Renamedclass[]> 
+{
+  const userId = req.user.user_id; // Giả sử thông tin người dùng đã được thêm vào req
+
+  try {
+    const classes = await this.classService.getClassesOwnedByPT(userId);
+    console.log(`Classes returned for user ID ${userId}: ${JSON.stringify(classes)}`); // Log lớp học trả về
+    return classes; // Trả về danh sách lớp học
+  } catch (error) {
+    console.error('Error in getClassesOwnedByPT controller:', error); // Log lỗi ở controller
+    throw new HttpException('Unable to fetch classes owned by PT.', HttpStatus.INTERNAL_SERVER_ERROR);
+  }
+}
 
   @Get('info/:id')
   async getClassInfo(@Param('id') class_id: string) {
@@ -54,45 +76,55 @@ export class ClassController {
     }
   }
 
+  //lấy lớp theo status_id
+  @Get('status/:statusId')
+  findByStatus(@Param('statusId') statusId: string) {
+    return this.classService.findByStatus(+statusId);
+  }
+
+  
+
+
+
   @Post()
   @UseInterceptors(FileInterceptor('file')) // Sử dụng FileInterceptor để nhận file
   async addClass(
-    @Body() classData: { 
-      className: string; 
-      classDescription: string; 
+    @Body() classData: {
+      className: string;
+      classDescription: string;
       classType: string; // Đổi thành string vì giá trị nhận được là string
       fee: string; // Đổi thành string vì giá trị nhận được là string
-      startDate: string;  
-      endDate: string;    
+      startDate: string;
+      endDate: string;
     },
-    @UploadedFile() file: Express.Multer.File 
+    @UploadedFile() file: Express.Multer.File
   ) {
     try {
       if (!file) {
         throw new HttpException('File not provided.', HttpStatus.BAD_REQUEST);
       }
-  
+
       // Log dữ liệu đầu vào
       console.log('Received Class Data:', classData);
-  
+
       // Upload hình ảnh lên Cloudinary
       const uploadResult = await this.cloudinaryService.uploadImage(file);
-      
+
       // Chuyển đổi chuỗi thành đối tượng Date
       const startDate = parseISO(classData.startDate);
-      
+
       // Loại bỏ ký tự không mong muốn và chuyển đổi endDate
       const endDate = parseISO(classData.endDate.trim());
-  
+
       // Log giá trị ngày tháng sau khi chuyển đổi
       console.log('Parsed Start Date:', startDate);
       console.log('Parsed End Date:', endDate);
-  
+
       // Kiểm tra xem các giá trị Date có hợp lệ không
       if (!isValid(startDate) || !isValid(endDate)) {
         throw new HttpException('Invalid date provided.', HttpStatus.BAD_REQUEST);
       }
-  
+
       // Lưu URL hình ảnh vào cơ sở dữ liệu
       const newClass = await this.classService.addClass(
         classData.className,
@@ -103,82 +135,149 @@ export class ClassController {
         endDate,
         uploadResult.secure_url
       );
-  
-      return newClass; 
+
+      return newClass;
     } catch (error) {
       console.error(error);
       throw new InternalServerErrorException('Unable to add class.');
     }
   }
-  
 
-  
-  
-
-
-  @Patch(':id')
-@UseInterceptors(FileInterceptor('file'))
-async editClass(
-  @Param('id') classId: string,
+  @Post('create')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('3') // Yêu cầu role là 3 (Personal Trainer)
+@UseInterceptors(FileInterceptor('file')) // Sử dụng FileInterceptor để nhận file
+async createClass(
   @Body() classData: {
     className: string;
     classDescription: string;
-    statusId: string; // Keep this as string for parsing
-    classType: string; // Keep this as string for parsing
+    classType: string; // Đổi thành string
+    fee: string; // Đổi thành string
     startDate: string;
-    endDate: string; // Keep this as string for parsing
-    fee: string; // Keep this as string for parsing
-    oldImageId?: string;
+    endDate: string;
   },
-  @UploadedFile() file: Express.Multer.File
+  @UploadedFile() file: Express.Multer.File,
+  @Req() req: Request,
 ) {
-  const id = parseInt(classId, 10);
-  if (isNaN(id)) {
-    throw new HttpException('Invalid class_id provided.', HttpStatus.BAD_REQUEST);
-  }
+  const user = req.user as { user_id: number };
 
   try {
-    console.log('Received Class Data:', classData);
-    
-    const startDate = parseISO(classData.startDate.trim());
-    const endDate = parseISO(classData.endDate.trim().replace(/\n/g, '')); // Trim newline
+    console.log('Received Class Data:', classData); // Log dữ liệu lớp học nhận được
+    console.log('User ID:', user.user_id); // Log user ID
+
+    if (!file) {
+      console.error('File not provided.'); // Log nếu không có file
+      throw new HttpException('File not provided.', HttpStatus.BAD_REQUEST);
+    }
+
+    // Upload hình ảnh lên Cloudinary
+    const uploadResult = await this.cloudinaryService.uploadImage(file);
+    console.log('Image uploaded to Cloudinary:', uploadResult); // Log kết quả upload hình ảnh
+
+    const startDate = parseISO(classData.startDate);
+    const endDate = parseISO(classData.endDate.trim());
 
     if (!isValid(startDate) || !isValid(endDate)) {
+      console.error('Invalid date provided:', classData.startDate, classData.endDate); // Log nếu ngày không hợp lệ
       throw new HttpException('Invalid date provided.', HttpStatus.BAD_REQUEST);
     }
 
-    let imageUrl: string | undefined;
-    let oldImageId: string | undefined;
-
-    if (file) {
-      const uploadResult = await this.cloudinaryService.uploadImage(file);
-      imageUrl = uploadResult.secure_url;
-      oldImageId = classData.oldImageId;
-    }
-
-    // Parse to integers
-    const updatedClass = await this.classService.editClass(
-      id,
+    const newClass = await this.classService.addClassWithOwnership(
       classData.className,
       classData.classDescription,
-      parseInt(classData.statusId), // Convert to integer
-      parseInt(classData.classType), // Convert to integer
-      parseInt(classData.fee), // Convert to integer
+      parseInt(classData.classType),
+      parseInt(classData.fee),
       startDate,
       endDate,
-      imageUrl,
-      oldImageId
+      uploadResult.secure_url,
+      user.user_id,
     );
 
-    return updatedClass;
+    console.log('Class added successfully:', newClass); // Log thông tin lớp học đã thêm
+    return newClass;
   } catch (error) {
-    console.error(error);
-    throw new HttpException('Unable to update class.', HttpStatus.INTERNAL_SERVER_ERROR);
+    console.error('Error in createClass:', error); // Log lỗi trong quá trình tạo lớp học
+    throw new InternalServerErrorException('Unable to add class.');
   }
 }
 
 
-  
+
+
+  @Patch(':id')
+  @UseInterceptors(FileInterceptor('file'))
+  async editClass(
+    @Param('id') classId: string,
+    @Body() classData: {
+      className: string;
+      classDescription: string;
+      statusId: string; // Keep this as string for parsing
+      classType: string; // Keep this as string for parsing
+      startDate: string;
+      endDate: string; // Keep this as string for parsing
+      fee: string; // Keep this as string for parsing
+      oldImageId?: string;
+    },
+    @UploadedFile() file: Express.Multer.File
+  ) {
+    const id = parseInt(classId, 10);
+    if (isNaN(id)) {
+      throw new HttpException('Invalid class_id provided.', HttpStatus.BAD_REQUEST);
+    }
+
+    try {
+      console.log('Received Class Data:', classData);
+
+      const startDate = parseISO(classData.startDate.trim());
+      const endDate = parseISO(classData.endDate.trim().replace(/\n/g, '')); // Trim newline
+
+      if (!isValid(startDate) || !isValid(endDate)) {
+        throw new HttpException('Invalid date provided.', HttpStatus.BAD_REQUEST);
+      }
+
+      let imageUrl: string | undefined;
+      let oldImageId: string | undefined;
+
+      if (file) {
+        const uploadResult = await this.cloudinaryService.uploadImage(file);
+        imageUrl = uploadResult.secure_url;
+        oldImageId = classData.oldImageId;
+      }
+
+      // Parse to integers
+      const updatedClass = await this.classService.editClass(
+        id,
+        classData.className,
+        classData.classDescription,
+        parseInt(classData.statusId), // Convert to integer
+        parseInt(classData.classType), // Convert to integer
+        parseInt(classData.fee), // Convert to integer
+        startDate,
+        endDate,
+        imageUrl,
+        oldImageId
+      );
+
+      return updatedClass;
+    } catch (error) {
+      console.error(error);
+      throw new HttpException('Unable to update class.', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+
+  // sửa status id của lớp
+  @Patch(':id/status')
+  async updateClassStatus(
+    @Param('id') classId: string,
+    @Body('statusId') statusId: number,
+  ) {
+    const updatedClass = await this.classService.updateStatus(+classId, statusId);
+    if (!updatedClass) {
+      throw new NotFoundException('Class not found');
+    }
+    return updatedClass;
+  }
 
   // Xóa một lớp
   @Delete(':id')

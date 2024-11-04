@@ -22,7 +22,7 @@ export class UserService {
       data: {
         ...createUserDto,
         password: hashedPassword,
-        role_id: 3, // Thiết lập role_id mặc định
+        role_id: 2, // Thiết lập role_id mặc định
         status_id: 1, // Thiết lập status_id mặc định
         created_at: new Date(), // Thời gian tạo
         updated_at: new Date(), // Thời gian cập nhật
@@ -46,6 +46,10 @@ export class UserService {
     }
 
     return user;
+  }
+
+  async findByStatus(status_id: number) {
+    return this.databaseService.user.findMany({ where: { status_id } });
   }
 
   async update(id: number, updateUserDto: Prisma.userUpdateInput) {

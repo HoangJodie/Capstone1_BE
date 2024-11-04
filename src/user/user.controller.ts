@@ -26,7 +26,11 @@ export class UserController {
     findOne(@Param('id') id: string) {
         return this.userService.findOne(+id);
     }
-
+    @Get('status/:statusId')
+    findByStatus(@Param('statusId') statusId: string) {
+        return this.userService.findByStatus(+statusId);
+    }
+    
     @Patch(':id')
     update(@Param('id') id: string, @Body() userDto: UserDto) {
         return this.userService.update(+id, userDto);

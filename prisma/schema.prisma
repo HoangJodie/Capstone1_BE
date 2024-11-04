@@ -61,7 +61,7 @@ model membership {
 model schedule {
   schedule_id Int       @id @default(autoincrement())
   class_id    Int?
-  days        String?   @db.VarChar(50)
+  days        DateTime? @db.Date
   start_hour  DateTime? @db.Time(0)
   end_hour    DateTime? @db.Time(0)
 

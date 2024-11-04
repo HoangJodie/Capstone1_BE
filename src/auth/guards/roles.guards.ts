@@ -12,12 +12,11 @@ export class RolesGuard implements CanActivate {
         }
 
         const request = context.switchToHttp().getRequest();
-        const user = request.user; // Lấy user từ request (đã được validate từ JwtStrategy)
+        const user = (request as any).user; // Ép kiểu `request` để bỏ qua kiểm tra kiểu của TypeScript
 
         console.log('User:', user); // Log thông tin người dùng
         console.log('Required Roles:', roles); // Log các role yêu cầu
 
-        // Kiểm tra role có phải là một trong các roles yêu cầu không
-        return roles.includes(user.role?.toString()); // Sử dụng user.role thay vì user.role_id
+        return roles.includes(user?.role?.toString()); // Sử dụng user.role thay vì user.role_id
     }
 }
