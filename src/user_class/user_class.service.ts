@@ -40,6 +40,59 @@ export class UserClassService {
     });
   }
 
+  // get users by classid
+  async getUsersByClassId(classId: number | null): Promise<any[]> {
+    try {
+      // Step 1: Get user IDs from `user_class` table based on `classId`
+      const userClasses = await this.databaseService.user_class.findMany({
+        where: classId !== null ? { class_id: classId } : {}, // Apply class_id filter only if provided
+        select: {
+          user_id: true,
+          class_id: true,
+          status_id: true,
+        },
+      });
+  
+      // If no users are associated with the class (or any class if `classId` is null), return an empty array
+      if (userClasses.length === 0) {
+        console.log(`No users found for class ID: ${classId}`);
+        return [];
+      }
+  
+      // Step 2: Extract user IDs from the `userClasses` result
+      const userIds = userClasses.map(userClass => userClass.user_id);
+  
+      // Step 3: Fetch user details based on the retrieved user IDs and include `class_id` and `status_id`
+      const users = await this.databaseService.user.findMany({
+        where: {
+          user_id: { in: userIds },
+        },
+        select: {
+          user_id: true,
+          username: true,
+          email: true,
+          phoneNum: true,
+          role_id: true,
+        },
+      });
+      
+  
+      // Map the user details with the class information
+      const result = users.map(user => {
+        const userClassInfo = userClasses.find(uc => uc.user_id === user.user_id);
+        return {
+          ...user,
+          class_id: userClassInfo ? userClassInfo.class_id : null,
+          status_id: userClassInfo ? userClassInfo.status_id : null,
+        };
+      });
+  
+      return result;
+    } catch (error) {
+      console.error(`Error in getUsersByClassId service for class ID ${classId}:`, error);
+      throw new Error('Failed to fetch users for the class.');
+    }
+  }
   
 
   // Retrieve user-class associations by status_id
@@ -52,32 +105,6 @@ export class UserClassService {
     const entry = await this.findOne(userId, classId);
     return { isJoined: !!entry }; // Return true if association exists, otherwise false
   }
-
-  // Fetch users who are in a specific class
-  async getUsersByClassId(classId: number) {
-    // Fetching user-class associations for the given classId
-    const userClasses = await this.databaseService.user_class.findMany({
-      where: { class_id: classId }, // Use the database service to find associations
-    });
-
-    // If there are no associations, return an empty array
-    if (!userClasses.length) return [];
-
-    // Extract user IDs from the associations
-    const userIds = userClasses.map(userClass => userClass.user_id);
-
-    // Fetch users based on user IDs
-    const users = await this.databaseService.user.findMany({
-      where: { user_id: { in: userIds } }, // Change 'id' to 'user_id' or the correct field name
-    });
-
-  // Map users to include only necessary data
-  return users.map(user => ({
-    userId: user.user_id, // Change 'id' to 'user_id' or the correct field name
-    username: user.username,
-    role_id: user.role_id,
-  }));
-}
 
 // Update the status_id of a specific user-class association
 async updateStatus(userId: number, classId: number, statusId: number) {
