@@ -47,20 +47,15 @@ export class ScheduleController {
     }
 
     // Sửa lịch
-    @Patch(':id') // schedule id ở đây là string
-    async editSchedule(@Param('id') scheduleId: string, @Body() scheduleData: { classId: number; days: string; startHour: Date; endHour: Date }) {
-        const id = parseInt(scheduleId, 10);
-        if (isNaN(id)) {
-            throw new HttpException('Invalid schedule_id provided.', HttpStatus.BAD_REQUEST);
-        }
-        try {
-            const schedule = await this.ScheduleService.editSchedule(id, scheduleData.classId, scheduleData.days, scheduleData.startHour, scheduleData.endHour);
-            return schedule;
-        } catch (error) {
-            console.error(error);
-            throw new HttpException('Error editing schedule.', HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
+    @Patch(':id')
+  async editSchedule(
+    @Param('id') id: string,
+    @Body() scheduleData: { classId: number; days: string; startHour: Date; endHour: Date },
+  ) {
+    console.log(`Schedule: ${JSON.stringify(scheduleData)}`);
+    // You should pass the id and the scheduleData object (not separate parameters)
+    return this.ScheduleService.editSchedule(id, scheduleData);
+  }
 
     // Xóa lịch
     @Delete(':id')

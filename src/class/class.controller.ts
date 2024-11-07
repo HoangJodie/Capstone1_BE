@@ -69,8 +69,15 @@ export class ClassController {
       classDescription: string; 
       classType: string; // Đổi thành string vì giá trị nhận được là string
       fee: string; // Đổi thành string vì giá trị nhận được là string
+<<<<<<< Updated upstream
       startDate: string;  
       endDate: string;    
+=======
+      startDate: string;
+      endDate: string;
+      pt_id: string;
+      maxAttender: string;
+>>>>>>> Stashed changes
     },
     @UploadedFile() file: Express.Multer.File 
   ) {
@@ -108,7 +115,9 @@ export class ClassController {
         parseInt(classData.fee),        // Chuyển đổi thành số nếu cần
         startDate,
         endDate,
-        uploadResult.secure_url
+        uploadResult.secure_url,
+        parseInt(classData.pt_id),
+        parseInt(classData.maxAttender)
       );
   
       return newClass; 
@@ -129,9 +138,14 @@ async editClass(
     statusId: string; // Keep this as string for parsing
     classType: string; // Keep this as string for parsing
     startDate: string;
+<<<<<<< Updated upstream
     endDate: string; // Keep this as string for parsing
     fee: string; // Keep this as string for parsing
     oldImageId?: string;
+=======
+    endDate: string;
+    maxAttender: string;
+>>>>>>> Stashed changes
   },
   @UploadedFile() file: Express.Multer.File
 ) {
@@ -169,8 +183,14 @@ async editClass(
       parseInt(classData.fee), // Convert to integer
       startDate,
       endDate,
+<<<<<<< Updated upstream
       imageUrl,
       oldImageId
+=======
+      uploadResult.secure_url,
+      user.user_id,
+      parseInt(classData.maxAttender),
+>>>>>>> Stashed changes
     );
 
     return updatedClass;

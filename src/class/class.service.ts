@@ -15,7 +15,9 @@ export class ClassService {
     fee: number,
     start_date: Date,
     end_date: Date,
-    image_url: string // Thêm tham số image_url
+    image_url: string, // Thêm tham số image_url
+    pt_id: number,
+    maxAttender: number
   ) {
     try {
       const newClass = await this.prisma.renamedclass.create({
@@ -27,7 +29,9 @@ export class ClassService {
           start_date: start_date, // start_date là kiểu Date
           end_date: end_date, // end_date là kiểu Date
           fee: fee, // fee là kiểu số thập phân
-          image_url: image_url // Lưu URL vào cơ sở dữ liệu
+          image_url: image_url, // Lưu URL vào cơ sở dữ liệu
+          pt_id: pt_id,
+          maxAttender: maxAttender 
         },
       });
       return newClass; // Trả về lớp học mới đã được thêm vào
@@ -37,6 +41,70 @@ export class ClassService {
     }
   }
   
+<<<<<<< Updated upstream
+=======
+  //Addclass cho PT
+  async addClassWithOwnership(
+    class_name: string,
+    class_description: string,
+    class_type: number,
+    fee: number,
+    start_date: Date,
+    end_date: Date,
+    image_url: string,
+    user_id: number,
+    maxAttender: number
+  ): Promise<Renamedclass> {
+    try {
+      console.log('Adding class with data:', {
+        class_name,
+        class_description,
+        class_type,
+        fee,
+        start_date,
+        end_date,
+        image_url,
+        user_id,
+        maxAttender,
+      }); // Log dữ liệu đầu vào
+  
+      // Tạo bản ghi mới trong bảng Renamedclass
+      const newClass = await this.prisma.renamedclass.create({
+        data: {
+          class_name: class_name,
+          class_description: class_description,
+          status_id: 1,
+          class_type: class_type,
+          start_date: start_date,
+          end_date: end_date,
+          fee: fee,
+          image_url: image_url,
+          pt_id: user_id,
+          maxAttender: maxAttender,
+        },
+      });
+  
+      console.log('New class created:', newClass); // Log lớp học vừa tạo
+  
+      // Tạo bản ghi liên kết giữa user và class trong bảng user_class
+      await this.prisma.user_class.create({
+        data: {
+          user_id: user_id,
+          class_id: newClass.class_id,
+          status_id: 1,
+        },
+      });
+  
+      return newClass; // Trả về thông tin lớp học vừa tạo
+    } catch (error) {
+      console.error('Error adding class:', error); // Log lỗi nếu có
+      throw new InternalServerErrorException('Unable to add class.');
+    }
+  }
+  
+
+  
+>>>>>>> Stashed changes
 
   
 
