@@ -31,29 +31,39 @@ export class ScheduleService {
     }
 
     // Sửa lịch
-    async editSchedule(
-        schedule_id: number,
-        class_id: number,
-        days: string,
-        start_hour: Date,
-        end_hour: Date,
-    ) {
+    async editSchedule(scheduleId: string, scheduleData: { classId: number; days: string; startHour: Date; endHour: Date }) {
+        const id = parseInt(scheduleId, 10);
+
+        if (isNaN(id)) {
+        throw new Error('Invalid schedule_id provided.');
+        }
+
         try {
-            const schedule = await this.prisma.schedule.update({
-                where: { schedule_id: schedule_id },
-                data: {
-                    class_id: class_id,
-                    days,
-                    start_hour: start_hour,
-                    end_hour: end_hour,
-                },
-            });
-            return schedule;
+    // Ensure 'days' is a valid ISO-8601 DateTime
+        const days = new Date(scheduleData.days); // Ensure it's a valid Date object
+        if (isNaN(days.getTime())) {
+            throw new Error('Invalid date format for days.');
+        }
+
+        const schedule = await this.prisma.schedule.update({
+            where: {
+            schedule_id: id,
+            },
+            data: {
+            class_id: scheduleData.classId, // Make sure classId is passed correctly
+            days: days.toISOString(), // Ensure days is in ISO-8601 format
+            start_hour: scheduleData.startHour,
+            end_hour: scheduleData.endHour,
+            },
+        });
+
+        return schedule;
         } catch (error) {
-            console.error(error);
-            throw new Error('Unable to edit schedule.'); // Ném ra lỗi cụ thể
+        console.error('Error updating schedule:', error);
+        throw new Error('Error updating schedule.');
         }
     }
+
 
     // Xóa lịch
     async deleteSchedule(schedule_id: number): Promise<schedule> {

@@ -89,42 +89,45 @@ async getClassesOwnedByPT(@Req() req): Promise<Renamedclass[]>
   @Post()
   @UseInterceptors(FileInterceptor('file')) // Sử dụng FileInterceptor để nhận file
   async addClass(
-    @Body() classData: {
-      className: string;
-      classDescription: string;
+    @Body() classData: { 
+      className: string; 
+      classDescription: string; 
       classType: string; // Đổi thành string vì giá trị nhận được là string
       fee: string; // Đổi thành string vì giá trị nhận được là string
       startDate: string;
       endDate: string;
+      pt_id: string;
+      maxAttender: string;
+      classSubject: string;
     },
-    @UploadedFile() file: Express.Multer.File
+    @UploadedFile() file: Express.Multer.File 
   ) {
     try {
       if (!file) {
         throw new HttpException('File not provided.', HttpStatus.BAD_REQUEST);
       }
-
+  
       // Log dữ liệu đầu vào
       console.log('Received Class Data:', classData);
-
+  
       // Upload hình ảnh lên Cloudinary
       const uploadResult = await this.cloudinaryService.uploadImage(file);
-
+      
       // Chuyển đổi chuỗi thành đối tượng Date
       const startDate = parseISO(classData.startDate);
-
+      
       // Loại bỏ ký tự không mong muốn và chuyển đổi endDate
       const endDate = parseISO(classData.endDate.trim());
-
+  
       // Log giá trị ngày tháng sau khi chuyển đổi
       console.log('Parsed Start Date:', startDate);
       console.log('Parsed End Date:', endDate);
-
+  
       // Kiểm tra xem các giá trị Date có hợp lệ không
       if (!isValid(startDate) || !isValid(endDate)) {
         throw new HttpException('Invalid date provided.', HttpStatus.BAD_REQUEST);
       }
-
+  
       // Lưu URL hình ảnh vào cơ sở dữ liệu
       const newClass = await this.classService.addClass(
         classData.className,
@@ -133,15 +136,19 @@ async getClassesOwnedByPT(@Req() req): Promise<Renamedclass[]>
         parseInt(classData.fee),        // Chuyển đổi thành số nếu cần
         startDate,
         endDate,
-        uploadResult.secure_url
+        uploadResult.secure_url,
+        parseInt(classData.pt_id),
+        parseInt(classData.maxAttender),
+        classData.classSubject,
       );
-
-      return newClass;
+  
+      return newClass; 
     } catch (error) {
       console.error(error);
       throw new InternalServerErrorException('Unable to add class.');
     }
   }
+
 
   @Post('create')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -155,6 +162,8 @@ async createClass(
     fee: string; // Đổi thành string
     startDate: string;
     endDate: string;
+    maxAttender: string;
+    classSubject: string;
   },
   @UploadedFile() file: Express.Multer.File,
   @Req() req: Request,
@@ -191,6 +200,8 @@ async createClass(
       endDate,
       uploadResult.secure_url,
       user.user_id,
+      parseInt(classData.maxAttender),
+      classData.classSubject
     );
 
     console.log('Class added successfully:', newClass); // Log thông tin lớp học đã thêm
@@ -204,66 +215,60 @@ async createClass(
 
 
 
-  @Patch(':id')
-  @UseInterceptors(FileInterceptor('file'))
-  async editClass(
-    @Param('id') classId: string,
-    @Body() classData: {
-      className: string;
-      classDescription: string;
-      statusId: string; // Keep this as string for parsing
-      classType: string; // Keep this as string for parsing
-      startDate: string;
-      endDate: string; // Keep this as string for parsing
-      fee: string; // Keep this as string for parsing
-      oldImageId?: string;
-    },
-    @UploadedFile() file: Express.Multer.File
-  ) {
-    const id = parseInt(classId, 10);
-    if (isNaN(id)) {
-      throw new HttpException('Invalid class_id provided.', HttpStatus.BAD_REQUEST);
-    }
-
-    try {
-      console.log('Received Class Data:', classData);
-
-      const startDate = parseISO(classData.startDate.trim());
-      const endDate = parseISO(classData.endDate.trim().replace(/\n/g, '')); // Trim newline
-
-      if (!isValid(startDate) || !isValid(endDate)) {
-        throw new HttpException('Invalid date provided.', HttpStatus.BAD_REQUEST);
-      }
-
-      let imageUrl: string | undefined;
-      let oldImageId: string | undefined;
-
-      if (file) {
-        const uploadResult = await this.cloudinaryService.uploadImage(file);
-        imageUrl = uploadResult.secure_url;
-        oldImageId = classData.oldImageId;
-      }
-
-      // Parse to integers
-      const updatedClass = await this.classService.editClass(
-        id,
-        classData.className,
-        classData.classDescription,
-        parseInt(classData.statusId), // Convert to integer
-        parseInt(classData.classType), // Convert to integer
-        parseInt(classData.fee), // Convert to integer
-        startDate,
-        endDate,
-        imageUrl,
-        oldImageId
-      );
-
-      return updatedClass;
-    } catch (error) {
-      console.error(error);
-      throw new HttpException('Unable to update class.', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+@Patch(':id')
+@UseInterceptors(FileInterceptor('file'))
+async editClass(
+  @Param('id') classId: string,
+  @Body() classData: {
+    className: string;
+    classDescription: string;
+    statusId: string; // Keep this as string for parsing
+    fee: string;
+    classType: string; // Keep this as string for parsing
+    startDate: string;
+    endDate: string;
+    oldImageId?: string;
+    pt_id: string;
+    maxAttender: string;
+    class_subject: string
+  },
+  @UploadedFile() file: Express.Multer.File
+) {
+  const id = parseInt(classId, 10);
+  if (isNaN(id)) {
+    throw new HttpException('Invalid class_id provided.', HttpStatus.BAD_REQUEST);
   }
+
+  try {
+    console.log('Received Class Data:', classData);
+    
+    const startDate = parseISO(classData.startDate.trim());
+    const endDate = parseISO(classData.endDate.trim().replace(/\n/g, '')); // Trim newline
+
+    if (!isValid(startDate) || !isValid(endDate)) {
+      throw new HttpException('Invalid date provided.', HttpStatus.BAD_REQUEST);
+    }
+
+    let imageUrl: string | undefined;
+    let oldImageId: string | undefined;
+
+    if (file) {
+      const uploadResult = await this.cloudinaryService.uploadImage(file);
+      imageUrl = uploadResult.secure_url;
+      oldImageId = classData.oldImageId;
+    }
+
+    // Parse to integers
+    const updatedClass = await this.classService.editClass(
+      { class_id: id, class_name: classData.className, class_description: classData.classDescription, status_id: parseInt(classData.statusId), class_type: parseInt(classData.classType), fee: parseInt(classData.fee), start_date: startDate, end_date: endDate, image_url: imageUrl, oldImageId, pt_id: parseInt(classData.pt_id), maxAttender: parseInt(classData.maxAttender), class_subject: classData.class_subject }    );
+
+    return updatedClass;
+  } catch (error) {
+    console.error(error);
+    throw new HttpException('Unable to update class.', HttpStatus.INTERNAL_SERVER_ERROR);
+  }
+}
+
 
 
   // sửa status id của lớp

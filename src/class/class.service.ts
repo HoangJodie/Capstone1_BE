@@ -15,7 +15,10 @@ export class ClassService {
     fee: number,
     start_date: Date,
     end_date: Date,
-    image_url: string // Thêm tham số image_url
+    image_url: string, // Thêm tham số image_url
+    pt_id: number,
+    maxAttender: number,
+    class_subject: string
   ) {
     try {
       const newClass = await this.prisma.renamedclass.create({
@@ -27,7 +30,10 @@ export class ClassService {
           start_date: start_date, // start_date là kiểu Date
           end_date: end_date, // end_date là kiểu Date
           fee: fee, // fee là kiểu số thập phân
-          image_url: image_url // Lưu URL vào cơ sở dữ liệu
+          image_url: image_url, // Lưu URL vào cơ sở dữ liệu
+          pt_id: pt_id,
+          maxAttender: maxAttender,
+          class_subject: class_subject,
         },
       });
       return newClass; // Trả về lớp học mới đã được thêm vào
@@ -36,7 +42,8 @@ export class ClassService {
       throw new InternalServerErrorException('Unable to add class.'); // Thông báo lỗi
     }
   }
-  
+
+  //Addclass cho PT
   async addClassWithOwnership(
     class_name: string,
     class_description: string,
@@ -46,6 +53,8 @@ export class ClassService {
     end_date: Date,
     image_url: string,
     user_id: number,
+    maxAttender: number,
+    class_subject: string
   ): Promise<Renamedclass> {
     try {
       console.log('Adding class with data:', {
@@ -57,6 +66,8 @@ export class ClassService {
         end_date,
         image_url,
         user_id,
+        maxAttender,
+        class_subject,
       }); // Log dữ liệu đầu vào
   
       // Tạo bản ghi mới trong bảng Renamedclass
@@ -70,6 +81,9 @@ export class ClassService {
           end_date: end_date,
           fee: fee,
           image_url: image_url,
+          pt_id: user_id,
+          maxAttender: maxAttender,
+          class_subject: class_subject,
         },
       });
   
@@ -90,6 +104,7 @@ export class ClassService {
       throw new InternalServerErrorException('Unable to add class.');
     }
   }
+
   
 
   
@@ -97,17 +112,7 @@ export class ClassService {
   
 
   async editClass(
-    class_id: number,
-    class_name: string,
-    class_description: string,
-    status_id: number,
-    class_type: number,
-    fee: number,
-    start_date: Date,
-    end_date: Date,
-    image_url?: string, // Thêm tham số image_url
-    oldImageId?: string // ID hình ảnh cũ
-  ) {
+{ class_id, class_name, class_description, status_id, class_type, fee, start_date, end_date, image_url, oldImageId, pt_id, maxAttender, class_subject }: { class_id: number; class_name: string; class_description: string; status_id: number; class_type: number; fee: number; start_date: Date; end_date: Date; image_url?: string; oldImageId?: string; pt_id: number; maxAttender: number; class_subject: string; }  ) {
     try {
       // Nếu có hình ảnh mới, thay thế hình ảnh cũ
       if (image_url && oldImageId) {
@@ -126,6 +131,9 @@ export class ClassService {
           end_date: end_date,
           fee: fee,
           ...(image_url && { image_url }), // Chỉ cập nhật nếu có image_url
+          pt_id: pt_id,
+          maxAttender: maxAttender,
+          class_subject: class_subject
         },
       });
       return updatedClass;
