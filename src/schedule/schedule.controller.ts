@@ -6,6 +6,8 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guards';
 import { Roles } from 'src/auth/decorators/roles.decorators';
 import { Request } from 'express';
+import { CreateScheduleDto } from './dto/create-schedule.dto';
+import { UpdateScheduleDto } from './dto/update-schedule.dto';
 
 @Controller('schedule')
 export class ScheduleController {
@@ -102,27 +104,44 @@ export class ScheduleController {
         }
     }
 
-    // Thêm lịch mới
-    @Post()
-    async addSchedule(@Body() scheduleData: { classId: number; days: string; startHour: Date; endHour: Date }) {
-        try {
-            const schedule = await this.ScheduleService.addSchedule(scheduleData.classId, scheduleData.days, scheduleData.startHour, scheduleData.endHour);
-            return schedule;
-        } catch (error) {
-            console.error(error);
-            throw new HttpException('Error adding schedule.', HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
+    // // Thêm lịch mới
+    // @Post()
+    // async addSchedule(@Body() scheduleData: { classId: number; days: string; startHour: Date; endHour: Date }) {
+    //     try {
+    //         const schedule = await this.ScheduleService.addSchedule(scheduleData.classId, scheduleData.days, scheduleData.startHour, scheduleData.endHour);
+    //         return schedule;
+    //     } catch (error) {
+    //         console.error(error);
+    //         throw new HttpException('Error adding schedule.', HttpStatus.INTERNAL_SERVER_ERROR);
+    //     }
+    // }
 
     // Sửa lịch
     @Patch(':id')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('3') // Chỉ cho phép PT chỉnh sửa
     async editSchedule(
-    @Param('id') id: string,
-    @Body() scheduleData: { classId: number; days: string; startHour: Date; endHour: Date },
+        @Param('id') scheduleId: string,
+        @Body() updateScheduleDto: UpdateScheduleDto,
+        @Req() req: Request & { user: { user_id: number } }
     ) {
-        console.log(`Schedule: ${JSON.stringify(scheduleData)}`);
-        // You should pass the id and the scheduleData object (not separate parameters)
-        return this.ScheduleService.editSchedule(id, scheduleData);
+        const id = parseInt(scheduleId, 10);
+        if (isNaN(id)) {
+            throw new HttpException('ID lịch không hợp lệ', HttpStatus.BAD_REQUEST);
+        }
+
+        try {
+            return await this.ScheduleService.editSchedule(
+                id,
+                updateScheduleDto,
+                req.user.user_id
+            );
+        } catch (error) {
+            throw new HttpException(
+                error.message || 'Lỗi khi cập nhật lịch',
+                error.status || HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
     }
 
 
@@ -134,6 +153,36 @@ export class ScheduleController {
             return await this.ScheduleService.deleteSchedule(Number(id));
         } catch (error) {
             throw new HttpException('Error deleting schedule.', HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // Thêm lịch học theo lớp
+    @Post('class/:classId/batch')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('3') // Chỉ cho phép PT tạo lịch
+    async addScheduleBatch(
+        @Param('classId') classId: string,
+        @Body() scheduleData: CreateScheduleDto,
+        @Req() req: Request & { user: { user_id: number } }
+    ) {
+        const id = parseInt(classId, 10);
+        if (isNaN(id)) {
+            throw new HttpException('ID lớp không hợp lệ', HttpStatus.BAD_REQUEST);
+        }
+
+        try {
+            return await this.ScheduleService.addScheduleBatch(
+                id,
+                scheduleData.dayOfWeek,
+                new Date(scheduleData.startHour),
+                new Date(scheduleData.endHour),
+                req.user.user_id
+            );
+        } catch (error) {
+            throw new HttpException(
+                error.message || 'Lỗi khi thêm lịch học',
+                error.status || HttpStatus.INTERNAL_SERVER_ERROR
+            );
         }
     }
 }
