@@ -183,6 +183,8 @@ export class ClassService {
           end_date: true,
           fee: true,
           image_url: true, 
+          pt_id: true,
+          maxAttender: true,
         },
       });
 

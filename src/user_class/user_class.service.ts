@@ -40,10 +40,20 @@ export class UserClassService {
     });
   }
 
-  // get users by classid
+  //get number of user in a class
+  async getUserCountByClassId(classId: number): Promise<number> {
+    const count = await this.databaseService.user_class.count({
+      where: {
+        class_id: classId,
+      },
+    });
+    return count;
+  }
+
+    // get users by class_id
   async getUsersByClassId(classId: number | null): Promise<any[]> {
     try {
-      // Step 1: Get user IDs from `user_class` table based on `classId`
+      // Step 1: Get all user-class associations for a given class_id (including duplicates)
       const userClasses = await this.databaseService.user_class.findMany({
         where: classId !== null ? { class_id: classId } : {}, // Apply class_id filter only if provided
         select: {
@@ -52,48 +62,42 @@ export class UserClassService {
           status_id: true,
         },
       });
-  
+
       // If no users are associated with the class (or any class if `classId` is null), return an empty array
       if (userClasses.length === 0) {
         console.log(`No users found for class ID: ${classId}`);
         return [];
       }
-  
-      // Step 2: Extract user IDs from the `userClasses` result
-      const userIds = userClasses.map(userClass => userClass.user_id);
-  
-      // Step 3: Fetch user details based on the retrieved user IDs and include `class_id` and `status_id`
-      const users = await this.databaseService.user.findMany({
-        where: {
-          user_id: { in: userIds },
-        },
-        select: {
-          user_id: true,
-          username: true,
-          email: true,
-          phoneNum: true,
-          role_id: true,
-        },
-      });
-      
-  
-      // Map the user details with the class information
-      const result = users.map(user => {
-        const userClassInfo = userClasses.find(uc => uc.user_id === user.user_id);
-        return {
-          ...user,
-          class_id: userClassInfo ? userClassInfo.class_id : null,
-          status_id: userClassInfo ? userClassInfo.status_id : null,
-        };
-      });
-  
-      return result;
+
+      // Step 2: Fetch user details based on each `user_id` found in `userClasses`
+      const users = await Promise.all(
+        userClasses.map(async (userClass) => {
+          const user = await this.databaseService.user.findUnique({
+            where: { user_id: userClass.user_id },
+            select: {
+              user_id: true,
+              username: true,
+              email: true,
+              phoneNum: true,
+              role_id: true,
+            },
+          });
+          // Return combined data with user details and class-specific information
+          return {
+            ...user,
+            class_id: userClass.class_id,
+            status_id: userClass.status_id,
+          };
+        })
+      );
+
+      return users; // Return all user entries, preserving duplicates
     } catch (error) {
-      console.error(`Error in getUsersByClassId service for class ID ${classId}:`, error);
-      throw new Error('Failed to fetch users for the class.');
+      console.error('Error fetching users by class ID:', error);
+      throw new Error('Unable to retrieve users by class ID');
     }
   }
-  
+    
 
   // Retrieve user-class associations by status_id
   async findByStatus(statusId: number) {
