@@ -11,6 +11,7 @@ import { UserModule } from './user/user.module';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { ExerciseModule } from './exercise/exercise.module';
 import { UserClassModule } from './user_class/user_class.module';
+import { PaymentModule } from './payment/payment.module';
 
 @Module({
   imports: [
@@ -24,7 +25,8 @@ import { UserClassModule } from './user_class/user_class.module';
     UserModule,
     CloudinaryModule,
     ExerciseModule,
-    UserClassModule
+    UserClassModule,
+    PaymentModule
   ],
   controllers: [AppController],
   providers: [AppService],

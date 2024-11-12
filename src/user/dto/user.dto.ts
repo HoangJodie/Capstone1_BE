@@ -8,6 +8,11 @@ export class UserDto {
 
   @IsNotEmpty()
   @IsString()
+  @Length(2, 100)
+  name: string;
+
+  @IsNotEmpty()
+  @IsString()
   password: string;
 
   @IsNotEmpty()

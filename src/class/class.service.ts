@@ -4,6 +4,40 @@ import { DatabaseService } from 'src/database/database.service';
 import { Renamedclass, user_class } from '@prisma/client';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 
+interface EditClassParams {
+  class_id: number;
+  class_name: string;
+  class_description: string;
+  status_id: number;
+  class_type: number;
+  fee: number;
+  start_date: Date;
+  end_date: Date;
+  image_url?: string;
+  oldImageId?: string;
+  pt_id: number;
+  maxAttender: number;
+  class_subject: string;
+}
+
+interface ClassSearchResult {
+  class_id: number;
+  class_name: string;
+  class_description: string;
+  status_id: number;
+  class_type: number;
+  fee: number;
+  start_date: Date;
+  end_date: Date;
+  image_url: string;
+  pt_id: number;
+  maxAttender: number;
+  class_subject: string;
+  trainer_name: string;
+  current_attender: number;
+  remainingSlots: number;
+}
+
 @Injectable()
 export class ClassService {
   constructor(private prisma: DatabaseService, private cloudinaryService: CloudinaryService) { }
@@ -104,45 +138,72 @@ export class ClassService {
       throw new InternalServerErrorException('Unable to add class.');
     }
   }
-
   
 
-  
+  async editClass(params: EditClassParams): Promise<Renamedclass> {
+    const {
+      class_id,
+      class_name,
+      class_description,
+      status_id,
+      class_type,
+      fee,
+      start_date,
+      end_date,
+      image_url,
+      pt_id,
+      maxAttender,
+      class_subject
+    } = params;
 
-  
-
-  async editClass(
-{ class_id, class_name, class_description, status_id, class_type, fee, start_date, end_date, image_url, oldImageId, pt_id, maxAttender, class_subject }: { class_id: number; class_name: string; class_description: string; status_id: number; class_type: number; fee: number; start_date: Date; end_date: Date; image_url?: string; oldImageId?: string; pt_id: number; maxAttender: number; class_subject: string; }  ) {
     try {
-      // Nếu có hình ảnh mới, thay thế hình ảnh cũ
-      if (image_url && oldImageId) {
-        // Xóa hình ảnh cũ
-        await this.cloudinaryService.deleteImage(oldImageId);
+      // Nếu có image_url mới, cập nhật với image mới
+      if (image_url) {
+        if (params.oldImageId) {
+          // Xóa ảnh cũ nếu có
+          await this.cloudinaryService.deleteImage(params.oldImageId);
+        }
+
+        return await this.prisma.renamedclass.update({
+          where: { class_id },
+          data: {
+            class_name,
+            class_description,
+            status_id,
+            class_type,
+            fee,
+            start_date,
+            end_date,
+            image_url,
+            pt_id,
+            maxAttender,
+            class_subject
+          },
+        });
       }
-  
-      const updatedClass = await this.prisma.renamedclass.update({
-        where: { class_id: class_id },
+
+      // Nếu không có image mới, cập nhật không có image
+      return await this.prisma.renamedclass.update({
+        where: { class_id },
         data: {
-          class_name: class_name,
-          class_description: class_description,
-          status_id: status_id,
-          class_type: class_type,
-          start_date: start_date,
-          end_date: end_date,
-          fee: fee,
-          ...(image_url && { image_url }), // Chỉ cập nhật nếu có image_url
-          pt_id: pt_id,
-          maxAttender: maxAttender,
-          class_subject: class_subject
+          class_name,
+          class_description,
+          status_id,
+          class_type,
+          fee,
+          start_date,
+          end_date,
+          pt_id,
+          maxAttender,
+          class_subject
         },
       });
-      return updatedClass;
     } catch (error) {
-      console.error(error);
-      throw new InternalServerErrorException('Unable to update class.');
+      console.error('Error in editClass:', error);
+      throw new Error('Failed to update class');
     }
   }
-  
+
   // sửa status id của class
   async updateStatus(classId: number, statusId: number) {
     const updatedClass = await this.prisma.renamedclass.update({
@@ -160,12 +221,44 @@ export class ClassService {
   // Xóa một lớp
   async deleteClass(class_id: number): Promise<Renamedclass> {
     try {
-      return await this.prisma.renamedclass.delete({
+      // Thực hiện xóa theo thứ tự để tránh vi phạm ràng buộc khóa ngoại
+      
+      // 1. Xóa tất cả các bản ghi trong bảng schedule liên quan đến lớp học
+      await this.prisma.schedule.deleteMany({
         where: { class_id },
       });
+
+      // 2. Xóa tất cả các bản ghi trong bảng user_class liên quan đến lớp học
+      await this.prisma.user_class.deleteMany({
+        where: { class_id },
+      });
+
+      // 3. Lấy thông tin lớp học trước khi xóa để lấy image_url
+      const classToDelete = await this.prisma.renamedclass.findUnique({
+        where: { class_id },
+      });
+
+      if (!classToDelete) {
+        throw new NotFoundException('Không tìm thấy lớp học');
+      }
+
+      // 4. Xóa lớp học từ bảng renamedclass
+      const deletedClass = await this.prisma.renamedclass.delete({
+        where: { class_id },
+      });
+
+      // 5. Nếu có image_url, xóa ảnh từ Cloudinary
+      if (classToDelete.image_url) {
+        const publicId = classToDelete.image_url.split('/').pop()?.split('.')[0];
+        if (publicId) {
+          await this.cloudinaryService.deleteImage(publicId);
+        }
+      }
+
+      return deletedClass;
     } catch (error) {
-      console.error(error);
-      throw new InternalServerErrorException('Unable to delete class.');
+      console.error('Lỗi khi xóa lớp học:', error);
+      throw new InternalServerErrorException('Không thể xóa lớp học. Vui lòng thử lại sau.');
     }
   }
 
@@ -201,34 +294,38 @@ export class ClassService {
   // Lấy class và tất cả schedule của nó
   async getClass(class_id: number): Promise<any> {
     try {
-      const result: any[] = await this.prisma.$queryRaw`
-          CALL GetClassAndScheduleByClassOrScheduleID(${class_id}, null);
-      `;
+      // Lấy thông tin lớp học
+      const classDetail = await this.prisma.renamedclass.findUnique({
+        where: { class_id: class_id }
+      });
 
-      if (result.length === 0) {
-        throw new NotFoundException('Class or schedule not found.');
+      if (!classDetail) {
+        throw new NotFoundException('Class not found');
       }
 
-      const classData = result[0];
-      const schedules = result.map(schedule => ({
-        days: schedule.f7,
-        start_hour: schedule.f8,
-        end_hour: schedule.f9,
-      }));
+      // Lấy thông tin PT riêng
+      const trainer = await this.prisma.user.findUnique({
+        where: { user_id: classDetail.pt_id },
+        select: { name: true }
+      });
+
+      // Lấy số lượng học viên
+      const currentAttenders = await this.prisma.user_class.count({
+        where: {
+          class_id: class_id,
+          status_id: 1
+        }
+      });
 
       return {
-        class_name: classData.f0,
-        class_description: classData.f1,
-        status_id: classData.f2,
-        class_type: classData.f3,
-        start_date: classData.f4,
-        end_date: classData.f5,
-        fee: classData.f6,
-        schedules: schedules,
+        ...classDetail,
+        currentAttender: currentAttenders,
+        remainingSlots: classDetail.maxAttender - currentAttenders,
+        trainer_name: trainer?.name
       };
     } catch (error) {
       console.error(error);
-      throw new InternalServerErrorException('Unable to fetch class and schedules.');
+      throw new InternalServerErrorException('Unable to fetch class details.');
     }
   }
 
@@ -238,60 +335,89 @@ export class ClassService {
   }
 
   // Lấy tất cả các lớp và trả về kèm với URL hình ảnh từ database
-  async getAllClass(): Promise<Renamedclass[]> {
+  async getAllClass(): Promise<any[]> {
     try {
-      const classes = await this.prisma.renamedclass.findMany();
-      return classes.map(cls => ({
-        ...cls,
-        imageUrl: cls.image_url, // URL hình ảnh được lưu trong trường image_url
-      }));
+      const classes = await this.prisma.renamedclass.findMany({
+        select: {
+          class_id: true,
+          class_name: true,
+          class_description: true,
+          status_id: true,
+          class_type: true,
+          fee: true,
+          start_date: true,
+          end_date: true,
+          image_url: true,
+          pt_id: true,
+          maxAttender: true,
+          class_subject: true, 
+        }
+      });
+
+      // Lấy số lượng học viên cho từng lớp và xử lý dữ liệu
+      const classesWithDetails = await Promise.all(
+        classes.map(async (cls) => {
+          const currentAttender = await this.prisma.user_class.count({
+            where: {
+              class_id: cls.class_id,
+              status_id: 1
+            }
+          });
+
+          const trainer = await this.prisma.user.findUnique({
+            where: { user_id: cls.pt_id },
+            select: { name: true }
+          });
+
+          // Chuyển đổi Decimal sang number cho fee và thêm các thông tin bổ sung
+          return {
+            ...cls,
+            fee: Number(cls.fee),
+            imageUrl: cls.image_url,
+            trainer_name: trainer?.name || 'Chưa có PT',
+            currentAttender: currentAttender,
+            remainingSlots: cls.maxAttender - currentAttender
+          };
+        })
+      );
+
+      return classesWithDetails;
     } catch (error) {
-      console.error('Error fetching classes:', error);
+      console.error('Error fetching all classes:', error);
       throw new InternalServerErrorException('Unable to fetch classes.');
     }
   }
 
-  async getClassesOwnedByPT(userId: number): Promise<Renamedclass[]> {
+  async getClassesOwnedByPT(userId: number): Promise<any[]> {
     try {
-      console.log(`Fetching classes for user ID: ${userId}`); // Log userId
-      
-      // Bước 1: Lấy danh sách class_id mà user_id là PT
-      const userClasses = await this.prisma.user_class.findMany({
-        where: {
-          user_id: userId,
-        },
-      });
-  
-      console.log(`User classes found: ${JSON.stringify(userClasses)}`); // Log danh sách lớp tìm thấy
-  
-      // Kiểm tra nếu không có lớp nào
-      if (userClasses.length === 0) {
-        console.log(`No classes found for user ID: ${userId}`); // Log khi không tìm thấy lớp
-        return []; // Trả về mảng rỗng nếu không có lớp nào
-      }
-  
-      const classIds = userClasses.map(userClass => userClass.class_id);
-      console.log(`Class IDs to fetch: ${classIds.join(', ')}`); // Log class IDs
-  
       const classes = await this.prisma.renamedclass.findMany({
         where: {
-          class_id: { in: classIds },
-        },
+          pt_id: userId
+        }
       });
-  
-      console.log(`Classes found: ${JSON.stringify(classes)}`); // Log lớp tìm thấy
-  
-      if (classes.length === 0) {
-        console.error(`No classes found for class IDs: ${classIds.join(', ')}`); // Log khi không tìm thấy lớp
-        throw new Error('No classes found for the provided class IDs.');
-      }
-  
-      return classes.map(cls => ({
-        ...cls,
-        imageUrl: cls.image_url,
-      }));
+
+      // Lấy số lượng học viên cho từng lớp
+      const classesWithAttenders = await Promise.all(
+        classes.map(async (cls) => {
+          const currentAttenders = await this.prisma.user_class.count({
+            where: {
+              class_id: cls.class_id,
+              status_id: 1
+            }
+          });
+
+          return {
+            ...cls,
+            imageUrl: cls.image_url,
+            currentAttender: currentAttenders,
+            remainingSlots: cls.maxAttender - currentAttenders
+          };
+        })
+      );
+
+      return classesWithAttenders;
     } catch (error) {
-      console.error('Error fetching classes owned by PT:', error); // Log lỗi
+      console.error('Error fetching classes owned by PT:', error);
       throw new InternalServerErrorException('Unable to fetch classes owned by PT.');
     }
   }
@@ -302,5 +428,50 @@ export class ClassService {
   
   
   
+
+  async searchClassesByName(name: string): Promise<any[]> {
+    try {
+      const classes = await this.prisma.renamedclass.findMany({
+        where: {
+          class_name: {
+            contains: name
+          }
+        }
+      });
+
+      // Lấy thông tin PT và số lượng học viên cho từng lớp
+      const classesWithDetails = await Promise.all(
+        classes.map(async (cls) => {
+          const trainer = await this.prisma.user.findUnique({
+            where: { user_id: cls.pt_id },
+            select: { name: true }
+          });
+
+          const currentAttender = await this.prisma.user_class.count({
+            where: {
+              class_id: cls.class_id,
+              status_id: 1
+            }
+          });
+
+          // Chuyển đổi Decimal sang number cho fee
+          const classData = {
+            ...cls,
+            fee: Number(cls.fee),
+            trainer_name: trainer?.name || 'Chưa có PT',
+            current_attender: currentAttender,
+            remainingSlots: cls.maxAttender - currentAttender
+          };
+
+          return classData;
+        })
+      );
+
+      return classesWithDetails;
+    } catch (error) {
+      console.error('Lỗi chi tiết khi tìm kiếm lớp:', error);
+      throw new InternalServerErrorException('Không thể tìm kiếm lớp');
+    }
+  }
 
 }

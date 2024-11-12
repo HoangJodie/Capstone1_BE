@@ -51,52 +51,78 @@ export class UserClassService {
   }
 
     // get users by class_id
-  async getUsersByClassId(classId: number | null): Promise<any[]> {
-    try {
-      // Step 1: Get all user-class associations for a given class_id (including duplicates)
-      const userClasses = await this.databaseService.user_class.findMany({
-        where: classId !== null ? { class_id: classId } : {}, // Apply class_id filter only if provided
-        select: {
-          user_id: true,
-          class_id: true,
-          status_id: true,
-        },
-      });
-
-      // If no users are associated with the class (or any class if `classId` is null), return an empty array
-      if (userClasses.length === 0) {
-        console.log(`No users found for class ID: ${classId}`);
-        return [];
+  // Thay đổi phương thức getUsersByClassId
+async getUsersByClassId(classId: number | null): Promise<{ pt: any | null, users: any[] }> {
+  try {
+    // Đầu tiên lấy thông tin về lớp và PT
+    const classInfo = classId !== null ? await this.databaseService.renamedclass.findUnique({
+      where: { class_id: classId },
+      select: {
+        pt_id: true,
+        // Xóa phần pt: { ... } và thay thế bằng cách query riêng user của PT
       }
+    }) : null;
 
-      // Step 2: Fetch user details based on each `user_id` found in `userClasses`
-      const users = await Promise.all(
-        userClasses.map(async (userClass) => {
-          const user = await this.databaseService.user.findUnique({
-            where: { user_id: userClass.user_id },
-            select: {
-              user_id: true,
-              username: true,
-              email: true,
-              phoneNum: true,
-              role_id: true,
-            },
-          });
-          // Return combined data with user details and class-specific information
-          return {
-            ...user,
-            class_id: userClass.class_id,
-            status_id: userClass.status_id,
-          };
-        })
-      );
+    // Nếu có pt_id, lấy thông tin user của PT
+    const ptInfo = classInfo?.pt_id ? await this.databaseService.user.findUnique({
+      where: { user_id: classInfo.pt_id },
+      select: {
+        user_id: true,
+        username: true,
+        email: true,
+        phoneNum: true,
+        role_id: true,
+        name: true,
+      }
+    }) : null;
 
-      return users; // Return all user entries, preserving duplicates
-    } catch (error) {
-      console.error('Error fetching users by class ID:', error);
-      throw new Error('Unable to retrieve users by class ID');
+    // Lấy danh sách user-class associations
+    const userClasses = await this.databaseService.user_class.findMany({
+      where: classId !== null ? { class_id: classId } : {},
+      select: {
+        user_id: true,
+        class_id: true,
+        status_id: true,
+      },
+    });
+
+    if (userClasses.length === 0) {
+      console.log(`No users found for class ID: ${classId}`);
+      return { pt: null, users: [] };
     }
+
+    // Lấy thông tin chi tiết của users
+    const users = await Promise.all(
+      userClasses.map(async (userClass) => {
+        const user = await this.databaseService.user.findUnique({
+          where: { user_id: userClass.user_id },
+          select: {
+            user_id: true,
+            username: true,
+            email: true,
+            phoneNum: true,
+            role_id: true,
+            name: true,
+          },
+        });
+        return {
+          ...user,
+          class_id: userClass.class_id,
+          status_id: userClass.status_id,
+        };
+      })
+    );
+
+    // Trả về kết quả bao gồm cả thông tin PT
+    return {
+      pt: ptInfo || null,
+      users: users,
+    };
+  } catch (error) {
+    console.error('Error fetching users by class ID:', error);
+    throw new Error('Unable to retrieve users by class ID');
   }
+}
     
 
   // Retrieve user-class associations by status_id

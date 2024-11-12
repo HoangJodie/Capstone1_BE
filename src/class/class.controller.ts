@@ -1,5 +1,5 @@
 /* eslint-disable prettier/prettier */
-import { Controller, Get, Param, Post, Body, Patch, Delete, HttpException, HttpStatus, UseInterceptors, UploadedFile, InternalServerErrorException, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Param, Post, Body, Patch, Delete, HttpException, HttpStatus, UseInterceptors, UploadedFile, InternalServerErrorException, UseGuards, Req, Query } from '@nestjs/common';
 import { ClassService } from './class.service';
 import { Renamedclass } from '@prisma/client'; // Sử dụng mô hình Renamedclass
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
@@ -61,6 +61,22 @@ async getClassesOwnedByPT(@Req() req): Promise<Renamedclass[]>
     }
   }
 
+  // Thêm endpoint mới sau các endpoint Get hiện có
+  @Get('search')
+  async searchClassesByName(@Query('name') name: string): Promise<any> {
+    if (!name || name.trim() === '') {
+      throw new HttpException('Tên tìm kiếm không được để trống', HttpStatus.BAD_REQUEST);
+    }
+    try {
+      const classes = await this.classService.searchClassesByName(name.trim());
+      return classes;
+    } catch (error) {
+      console.error('Lỗi khi tìm kiếm lớp:', error);
+      throw new HttpException('Không thể tìm kiếm lớp.', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  
   // Lấy lớp theo ID (gồm cả lịch học)
   @Get(':id')
   async getClass(@Param('id') class_id: string) {
@@ -83,8 +99,6 @@ async getClassesOwnedByPT(@Req() req): Promise<Renamedclass[]>
   }
 
   
-
-
 
   @Post()
   @UseInterceptors(FileInterceptor('file')) // Sử dụng FileInterceptor để nhận file
@@ -222,9 +236,9 @@ async editClass(
   @Body() classData: {
     className: string;
     classDescription: string;
-    statusId: string; // Keep this as string for parsing
+    statusId: string;
     fee: string;
-    classType: string; // Keep this as string for parsing
+    classType: string;
     startDate: string;
     endDate: string;
     oldImageId?: string;
@@ -243,7 +257,7 @@ async editClass(
     console.log('Received Class Data:', classData);
     
     const startDate = parseISO(classData.startDate.trim());
-    const endDate = parseISO(classData.endDate.trim().replace(/\n/g, '')); // Trim newline
+    const endDate = parseISO(classData.endDate.trim().replace(/\n/g, '')); 
 
     if (!isValid(startDate) || !isValid(endDate)) {
       throw new HttpException('Invalid date provided.', HttpStatus.BAD_REQUEST);
@@ -258,9 +272,22 @@ async editClass(
       oldImageId = classData.oldImageId;
     }
 
-    // Parse to integers
-    const updatedClass = await this.classService.editClass(
-      { class_id: id, class_name: classData.className, class_description: classData.classDescription, status_id: parseInt(classData.statusId), class_type: parseInt(classData.classType), fee: parseInt(classData.fee), start_date: startDate, end_date: endDate, image_url: imageUrl, oldImageId, pt_id: parseInt(classData.pt_id), maxAttender: parseInt(classData.maxAttender), class_subject: classData.class_subject }    );
+    // Thêm maxAttender vào object cập nhật
+    const updatedClass = await this.classService.editClass({
+      class_id: id,
+      class_name: classData.className,
+      class_description: classData.classDescription,
+      status_id: parseInt(classData.statusId),
+      class_type: parseInt(classData.classType),
+      fee: parseInt(classData.fee),
+      start_date: startDate,
+      end_date: endDate,
+      image_url: imageUrl,
+      oldImageId,
+      pt_id: parseInt(classData.pt_id),
+      maxAttender: parseInt(classData.maxAttender),
+      class_subject: classData.class_subject
+    });
 
     return updatedClass;
   } catch (error) {

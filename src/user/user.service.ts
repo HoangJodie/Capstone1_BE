@@ -2,10 +2,14 @@ import { Injectable, ConflictException, NotFoundException } from '@nestjs/common
 import { Prisma } from '@prisma/client';
 import { DatabaseService } from 'src/database/database.service';
 import * as bcrypt from 'bcryptjs';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 @Injectable()
 export class UserService {
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly cloudinaryService: CloudinaryService
+  ) {}
 
   async create(createUserDto: Prisma.userCreateInput) {
     const existingUser = await this.databaseService.user.findUnique({
@@ -39,6 +43,18 @@ export class UserService {
       where: {
         user_id: id,
       },
+      select: {
+        user_id: true,
+        username: true,
+        name: true,
+        email: true,
+        phoneNum: true,
+        imgurl: true,
+        role_id: true,
+        status_id: true,
+        created_at: true,
+        updated_at: true,
+      },
     });
 
     if (!user) {
@@ -52,35 +68,77 @@ export class UserService {
     return this.databaseService.user.findMany({ where: { status_id } });
   }
 
-  async update(id: number, updateUserDto: Prisma.userUpdateInput) {
+  async update(id: number, updateUserDto: Prisma.userUpdateInput, file?: Express.Multer.File) {
     // Tìm người dùng hiện tại
     const existingUser = await this.databaseService.user.findUnique({
       where: { user_id: id },
+      select: {
+        user_id: true,
+        username: true,
+        name: true,
+        email: true,
+        phoneNum: true,
+        imgurl: true,
+        role_id: true,
+        status_id: true,
+        password: true
+      }
     });
 
     if (!existingUser) {
       throw new NotFoundException('User not found');
     }
 
-    // Kiểm tra nếu người dùng muốn cập nhật mật khẩu
+    // Xử lý upload ảnh nếu có file
+    if (file) {
+      // Xóa ảnh cũ trên Cloudinary nếu có
+      if (existingUser.imgurl) {
+        const publicId = existingUser.imgurl.split('/').pop()?.split('.')[0];
+        if (publicId) {
+          await this.cloudinaryService.deleteImage(publicId);
+        }
+      }
+
+      // Upload ảnh mới
+      const uploadResult = await this.cloudinaryService.uploadImage(file);
+      updateUserDto.imgurl = uploadResult.url;
+    }
+
+    // Xử lý mật khẩu nếu có
     if (updateUserDto.password) {
       if (typeof updateUserDto.password === 'string') {
         const hashedPassword = await bcrypt.hash(updateUserDto.password, 10);
-        updateUserDto.password = hashedPassword; // Gán mật khẩu đã mã hóa
+        updateUserDto.password = hashedPassword;
       }
     } else {
-      // Nếu không có mật khẩu mới, giữ nguyên mật khẩu hiện tại
       delete updateUserDto.password;
     }
 
-    return this.databaseService.user.update({
+    // Cập nhật thông tin người dùng
+    const updatedUser = await this.databaseService.user.update({
       where: {
         user_id: id,
       },
-      data: updateUserDto,
+      data: {
+        ...updateUserDto,
+        updated_at: new Date(),
+      },
+      select: {
+        user_id: true,
+        username: true,
+        name: true,
+        email: true,
+        phoneNum: true,
+        imgurl: true,
+        role_id: true,
+        status_id: true,
+        created_at: true,
+        updated_at: true,
+      }
     });
-  }
 
+    return updatedUser;
+  }
 
   async remove(id: number) {
     const existingUser = await this.databaseService.user.findUnique({
