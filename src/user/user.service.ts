@@ -39,6 +39,21 @@ export class UserService {
   }
 
   async findOne(id: number) {
+    // Đầu tiên kiểm tra user và role
+    const userCheck = await this.databaseService.user.findUnique({
+      where: {
+        user_id: id,
+      },
+      select: {
+        role_id: true,
+      },
+    });
+
+    if (!userCheck) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Sau đó query lại với các trường phù hợp
     const user = await this.databaseService.user.findUnique({
       where: {
         user_id: id,
@@ -49,17 +64,14 @@ export class UserService {
         name: true,
         email: true,
         phoneNum: true,
-        imgurl: true,
+        // imgurl: true, // tạm thời comment
         role_id: true,
         status_id: true,
         created_at: true,
         updated_at: true,
+        ...(userCheck.role_id === 3 ? { PT_introduction: true } : {}), // Chỉ hiển thị PT_introduction nếu là PT
       },
     });
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
 
     return user;
   }

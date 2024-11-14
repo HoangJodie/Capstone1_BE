@@ -1,7 +1,6 @@
 /* eslint-disable prettier/prettier */
 import { Body, Controller, Post, Get, Param, Patch, Delete, BadRequestException, UseGuards, Req } from '@nestjs/common';
 import { UserService } from './user.service';
-import { Prisma } from '@prisma/client';
 import { UserDto } from './dto/user.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UseInterceptors, UploadedFile } from '@nestjs/common';
@@ -19,7 +18,7 @@ export class UserController {
         try {
             return await this.userService.create(userDto);
         } catch (error) {
-            throw new BadRequestException(error.message); // Gửi thông báo lỗi về frontend
+            throw new BadRequestException(error.message);
         }
     }
 
@@ -31,7 +30,7 @@ export class UserController {
     @Get('profile')
     @UseGuards(JwtAuthGuard)
     async getProfile(@Req() req: Request) {
-        const userId = req.user['user_id']; // Lấy user_id từ JWT payload
+        const userId = req.user['user_id'];
         return this.userService.findOne(userId);
     }
 
@@ -63,7 +62,7 @@ export class UserController {
 
     @Patch(':id')
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles('1') // Chỉ admin mới có thể cập nhật thông tin của user khác
+    @Roles('1')
     @UseInterceptors(FileInterceptor('image'))
     async updateUser(
         @Param('id') id: string,
