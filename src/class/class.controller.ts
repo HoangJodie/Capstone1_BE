@@ -47,6 +47,23 @@ async getClassesOwnedByPT(@Req() req): Promise<Renamedclass[]>
   }
 }
 
+  
+  // Thêm endpoint mới sau các endpoint Get hiện có
+  @Get('pt/:ptId')
+  async getClassesByPT(@Param('ptId') ptId: string) {
+    const id = parseInt(ptId, 10);
+    if (isNaN(id)) {
+      throw new HttpException('ID PT không hợp lệ.', HttpStatus.BAD_REQUEST);
+    }
+    try {
+      const classes = await this.classService.getClassesByPT(id);
+      return classes;
+    } catch (error) {
+      console.error('Lỗi khi lấy danh sách lớp của PT:', error);
+      throw new HttpException('Không thể lấy danh sách lớp của PT.', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
   @Get('info/:id')
   async getClassInfo(@Param('id') class_id: string) {
     const id = parseInt(class_id, 10);
@@ -325,4 +342,5 @@ async editClass(
       throw new HttpException('Unable to delete class.', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
+
 }

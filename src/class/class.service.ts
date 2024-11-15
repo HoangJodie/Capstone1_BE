@@ -474,4 +474,37 @@ export class ClassService {
     }
   }
 
+  async getClassesByPT(ptId: number): Promise<any[]> {
+    try {
+      const classes = await this.prisma.renamedclass.findMany({
+        where: {
+          pt_id: ptId
+        }
+      });
+
+      // Lấy số lượng học viên cho từng lớp
+      const classesWithAttenders = await Promise.all(
+        classes.map(async (cls) => {
+          const currentAttenders = await this.prisma.user_class.count({
+            where: {
+              class_id: cls.class_id,
+              status_id: 1
+            }
+          });
+
+          return {
+            ...cls,
+            currentAttender: currentAttenders,
+            remainingSlots: cls.maxAttender - currentAttenders
+          };
+        })
+      );
+
+      return classesWithAttenders;
+    } catch (error) {
+      console.error('Lỗi khi lấy danh sách lớp của PT:', error);
+      throw new InternalServerErrorException('Không thể lấy danh sách lớp của PT.');
+    }
+  }
+
 }
