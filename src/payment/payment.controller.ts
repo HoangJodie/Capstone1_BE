@@ -27,4 +27,33 @@ export class PaymentController {
   async vnpayReturn(@Query() query: any) {
     return this.paymentService.processPaymentReturn(query);
   }
+
+  @Post('create-momo-payment')
+  @UseGuards(JwtAuthGuard)
+  async createMomoPayment(
+    @Req() req,
+    @Body() body: { membershipType: number; amount: number }
+  ) {
+    const userId = req.user.user_id;
+    return this.paymentService.createMomoPayment(
+      userId,
+      body.membershipType,
+      body.amount
+    );
+  }
+
+  @Post('momo-notify')
+  async momoNotify(@Body() body: any) {
+    return this.paymentService.processMomoCallback(body);
+  }
+
+  @Get('momo-return')
+  async momoReturn(@Query() query: any) {
+    return this.paymentService.processMomoCallback(query);
+  }
+
+  @Post('check-momo-transaction')
+  async checkMomoTransaction(@Body('orderId') orderId: string) {
+    return this.paymentService.checkMomoTransaction(orderId);
+  }
 } 

@@ -1,9 +1,11 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { DatabaseService } from 'src/database/database.service';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import * as querystring from 'qs';
 import { format } from 'date-fns';
+import { momoConfig } from 'src/config/momo.config';
+import axios from 'axios';
 
 @Injectable()
 export class PaymentService {
@@ -126,5 +128,152 @@ export class PaymentService {
         throw new BadRequestException('Invalid membership type');
     }
     return endDate;
+  }
+
+  async createMomoPayment(
+    userId: number,
+    membershipType: number,
+    amount: number,
+  ) {
+    try {
+      const orderId = momoConfig.partnerCode + new Date().getTime();
+      const requestId = orderId;
+
+      // Tạo chuỗi signature
+      const rawSignature = 
+        'accessKey=' + momoConfig.accessKey +
+        '&amount=' + amount +
+        '&extraData=' + momoConfig.extraData +
+        '&ipnUrl=' + momoConfig.ipnUrl +
+        '&orderId=' + orderId +
+        '&orderInfo=' + momoConfig.orderInfo +
+        '&partnerCode=' + momoConfig.partnerCode +
+        '&redirectUrl=' + momoConfig.redirectUrl +
+        '&requestId=' + requestId +
+        '&requestType=' + momoConfig.requestType;
+
+      const signature = crypto
+        .createHmac('sha256', momoConfig.secretKey)
+        .update(rawSignature)
+        .digest('hex');
+
+      // Tạo membership record với trạng thái pending
+      const membership = await this.prisma.membership.create({
+        data: {
+          user_id: userId,
+          membership_type: membershipType,
+          price: amount,
+          status_id: 2, // Pending
+          start_date: new Date(),
+          end_date: this.calculateEndDate(membershipType),
+          payment_method: 'momo',
+          order_id: orderId
+        },
+      });
+
+      const requestBody = {
+        partnerCode: momoConfig.partnerCode,
+        partnerName: "GymCenter",
+        storeId: "MomoTestStore",
+        requestId: requestId,
+        amount: amount,
+        orderId: orderId,
+        orderInfo: `Thanh toan membership ID: ${membership.membership_id}`,
+        redirectUrl: momoConfig.redirectUrl,
+        ipnUrl: momoConfig.ipnUrl,
+        lang: momoConfig.lang,
+        requestType: momoConfig.requestType,
+        autoCapture: momoConfig.autoCapture,
+        extraData: momoConfig.extraData,
+        orderGroupId: momoConfig.orderGroupId,
+        signature: signature,
+      };
+
+      const response = await axios.post(
+        'https://test-payment.momo.vn/v2/gateway/api/create',
+        requestBody,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      return {
+        payUrl: response.data.payUrl,
+        membershipId: membership.membership_id,
+        orderId: orderId
+      };
+    } catch (error) {
+      console.error('Error creating Momo payment:', error);
+      throw new InternalServerErrorException('Unable to create payment.');
+    }
+  }
+
+  async processMomoCallback(momoResponse: any) {
+    try {
+      const { orderId, resultCode, message } = momoResponse;
+
+      // Tìm membership dựa trên orderId
+      const membership = await this.prisma.membership.findFirst({
+        where: { order_id: orderId }
+      });
+
+      if (!membership) {
+        throw new NotFoundException('Membership not found');
+      }
+
+      if (resultCode === 0) {
+        // Thanh toán thành công
+        await this.prisma.membership.update({
+          where: { membership_id: membership.membership_id },
+          data: { status_id: 1 } // Active
+        });
+        return { success: true, message: 'Payment successful' };
+      } else {
+        // Thanh toán thất bại
+        await this.prisma.membership.update({
+          where: { membership_id: membership.membership_id },
+          data: { status_id: 3 } // Failed
+        });
+        return { success: false, message };
+      }
+    } catch (error) {
+      console.error('Error processing Momo callback:', error);
+      throw new InternalServerErrorException('Unable to process payment callback.');
+    }
+  }
+
+  async checkMomoTransaction(orderId: string) {
+    try {
+      const rawSignature = 
+        `accessKey=${momoConfig.accessKey}&orderId=${orderId}&partnerCode=${momoConfig.partnerCode}&requestId=${orderId}`;
+
+      const signature = crypto
+        .createHmac('sha256', momoConfig.secretKey)
+        .update(rawSignature)
+        .digest('hex');
+
+      const response = await axios.post(
+        'https://test-payment.momo.vn/v2/gateway/api/query',
+        {
+          partnerCode: momoConfig.partnerCode,
+          requestId: orderId,
+          orderId: orderId,
+          signature: signature,
+          lang: 'vi',
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error('Error checking Momo transaction:', error);
+      throw new InternalServerErrorException('Unable to check transaction status.');
+    }
   }
 } 
