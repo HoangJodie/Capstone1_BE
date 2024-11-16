@@ -111,9 +111,9 @@ async getUsersByClassId(@Param('classId') classId: string): Promise<any> {
     // Endpoint to delete a user from a class
     @Delete()
     async deleteUserFromClass(
-      @Query('userId') userId: number,
-      @Query('classId') classId: number,
+      @Query('userId') userId: string,
+      @Query('classId') classId: string,
     ) {
-      return this.userClassService.deleteUserFromClass(userId, classId);
+      return this.userClassService.deleteUserFromClass(+parseInt(userId, 10), +parseInt(classId, 10));
     }
   }
