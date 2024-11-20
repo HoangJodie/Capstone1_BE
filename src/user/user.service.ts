@@ -3,12 +3,14 @@ import { Prisma } from '@prisma/client';
 import { DatabaseService } from 'src/database/database.service';
 import * as bcrypt from 'bcryptjs';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class UserService {
   constructor(
     private readonly databaseService: DatabaseService,
-    private readonly cloudinaryService: CloudinaryService
+    private readonly cloudinaryService: CloudinaryService,
+    private readonly jwtService: JwtService
   ) {}
 
   async create(createUserDto: Prisma.userCreateInput) {
@@ -27,7 +29,7 @@ export class UserService {
         ...createUserDto,
         password: hashedPassword,
         role_id: 2, // Thiết lập role_id mặc định
-        status_id: 1, // Thiết lập status_id mặc định
+        status_id: 2, // Thiết lập status_id mặc định
         created_at: new Date(), // Thời gian tạo
         updated_at: new Date(), // Thời gian cập nhật
       },
@@ -64,7 +66,7 @@ export class UserService {
         name: true,
         email: true,
         phoneNum: true,
-        // imgurl: true, // tạm thời comment
+        imgurl: true, // tạm thời comment
         role_id: true,
         status_id: true,
         created_at: true,
@@ -166,5 +168,30 @@ export class UserService {
         user_id: id,
       },
     });
+  }
+
+  async validateUserByToken(token: string) {
+    try {
+      // Verify token và decode thông tin user
+      const decodedToken = await this.jwtService.verify(token);
+      
+      // Kiểm tra user có tồn tại trong database
+      const user = await this.databaseService.user.findUnique({
+        where: { user_id: decodedToken.user_id }
+      });
+
+      if (!user) {
+        return null;
+      }
+
+      return {
+        user_id: user.user_id,
+        email: user.email,
+        // các thông tin khác nếu cần
+      };
+    } catch (error) {
+      console.error('Token validation error:', error);
+      return null;
+    }
   }
 }

@@ -1,12 +1,19 @@
 import { Module } from '@nestjs/common';
-import { PaymentService } from './payment.service';
 import { PaymentController } from './payment.controller';
-import { DatabaseModule } from 'src/database/database.module';
+import { PaymentService } from './payment.service';
+import { DatabaseService } from '../database/database.service';
+import { ConfigModule } from '@nestjs/config';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [DatabaseModule],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+    AuthModule
+  ],
   controllers: [PaymentController],
-  providers: [PaymentService],
+  providers: [PaymentService, DatabaseService],
   exports: [PaymentService]
 })
 export class PaymentModule {} 

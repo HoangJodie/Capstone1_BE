@@ -44,6 +44,8 @@ model membership {
   end_date        DateTime? @db.Date
   price           Decimal?  @db.Decimal(10, 2)
   status_id       Int?
+  payment_method  String?   @db.VarChar(20)
+  order_id        String?   @unique @db.VarChar(255)
 
   @@index([status_id], map: "status_id")
   @@index([user_id], map: "user_id")
@@ -89,6 +91,7 @@ model user_class {
 
 model exercisepost {
   post_id     Int       @id @default(autoincrement())
+  exercise_id String    @db.VarChar(10)
   name        String    @db.VarChar(255)
   body_part   String    @db.VarChar(50)
   equipment   String?   @db.VarChar(50)
@@ -96,7 +99,6 @@ model exercisepost {
   gif_url     String?   @db.VarChar(255)
   created_at  DateTime? @default(now()) @db.Timestamp(0)
   updated_at  DateTime? @default(now()) @db.Timestamp(0)
-  exercise_id String?   @db.VarChar(10)
 }
 
 model instructions {
@@ -105,7 +107,7 @@ model instructions {
   step_number Int?
   instruction String? @db.Text
 
-  @@index([post_id], map: "post_id")
+  @@index([post_id], map: "fk_post_instructions")
 }
 
 model secondarymuscles {
@@ -113,17 +115,5 @@ model secondarymuscles {
   post_id     Int?
   muscle_name String? @db.VarChar(100)
 
-  @@index([post_id], map: "post_id")
-}
-
-model authorizationrequests {
-  request_id   Int       @id @default(autoincrement())
-  user_id      Int?
-  role_id      Int?
-  status_id    Int?
-  request_date DateTime? @db.Date
-
-  @@index([role_id], map: "role_id")
-  @@index([status_id], map: "status_id")
-  @@index([user_id], map: "user_id")
+  @@index([post_id], map: "fk_post_secondarymuscles")
 }

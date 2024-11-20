@@ -76,4 +76,15 @@ export class AuthService {
       throw new Error('Invalid refresh token');
     }
   }
+
+
+  async verifyToken(token: string) {
+    try {
+      const decoded = await this.jwtService.verify(token);
+      return decoded;
+    } catch (error) {
+      console.error('Token verification error:', error);
+      return null;
+    }
+  }
 }

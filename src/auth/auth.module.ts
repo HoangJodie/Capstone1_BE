@@ -22,10 +22,11 @@ import { DatabaseModule } from 'src/database/database.module';
   ],
   providers: [AuthService, LocalStrategy, JwtStrategy, RolesGuard],
   controllers: [AuthController],
+  exports: [AuthService],
 })
 export class AuthModule {
   // Thời gian hết hạn của access token
-  static readonly accessTokenExpiration = '15m'; // Thay đổi theo nhu cầu
+  static readonly accessTokenExpiration = '1h'; // Thay đổi theo nhu cầu
   // Thời gian hết hạn của refresh token
   static readonly refreshTokenExpiration = '7d'; // Thay đổi theo nhu cầu
 
