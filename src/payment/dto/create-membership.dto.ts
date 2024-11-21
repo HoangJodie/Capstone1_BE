@@ -1,10 +1,10 @@
-export interface CreateMembershipDto {
+export class CreateMembershipDto {
     user_id: number;
     membership_type: number;
+    price: number;
     start_date: Date;
     end_date: Date;
-    price: number;
     status_id: number;
     payment_method: string;
-    order_id?: string;
+    quantity?: number;
 } 

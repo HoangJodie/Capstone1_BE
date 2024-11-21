@@ -14,6 +14,7 @@ export class PaymentController {
         private readonly prisma: DatabaseService
     ) { }
 
+    // API thanh toán membership
     @Post('create-membership')
     @UseGuards(JwtAuthGuard)
     async createMembershipPayment(
@@ -342,6 +343,81 @@ export class PaymentController {
             console.error('Check existing membership error:', error);
             throw new HttpException(
                 'Không thể kiểm tra membership hiện tại',
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+
+    @Get('membership-types')
+    async getAllMembershipTypes() {
+        try {
+            const membershipTypes = await this.paymentService.getAllMembershipTypes();
+            return membershipTypes;
+        } catch (error) {
+            console.error('Get membership types error:', error);
+            throw new HttpException(
+                'Không thể lấy thông tin các loại membership',
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+
+    @Get('membership-history')
+    @UseGuards(JwtAuthGuard)
+    async getMembershipHistory(@Req() req: Request) {
+        try {
+            const user = (req as any).user;
+            if (!user || !user.user_id) {
+                throw new HttpException(
+                    'Không thể xác thực người dùng',
+                    HttpStatus.UNAUTHORIZED
+                );
+            }
+
+            const history = await this.paymentService.getMembershipHistory(user.user_id);
+            return history;
+
+        } catch (error) {
+            console.error('Get membership history error:', error);
+            throw new HttpException(
+                'Không thể lấy lịch sử membership',
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+
+    @Get('bill-detail/:membershipId')
+    @UseGuards(JwtAuthGuard)
+    async getMembershipBillDetail(
+        @Param('membershipId') membershipId: string,
+        @Req() req: Request
+    ) {
+        try {
+            const user = (req as any).user;
+            if (!user || !user.user_id) {
+                throw new HttpException(
+                    'Không thể xác thực người dùng',
+                    HttpStatus.UNAUTHORIZED
+                );
+            }
+
+            if (!membershipId || isNaN(Number(membershipId))) {
+                throw new HttpException(
+                    'Membership ID không hợp lệ',
+                    HttpStatus.BAD_REQUEST
+                );
+            }
+
+            const billDetail = await this.paymentService.getMembershipBillDetail(
+                Number(membershipId),
+                user.user_id
+            );
+            return billDetail;
+
+        } catch (error) {
+            console.error('Get bill detail error:', error);
+            throw new HttpException(
+                error.message || 'Không thể lấy thông tin chi tiết hóa đơn',
                 HttpStatus.INTERNAL_SERVER_ERROR
             );
         }

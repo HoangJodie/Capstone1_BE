@@ -37,18 +37,21 @@ model Renamedclass {
 }
 
 model membership {
-  membership_id   Int       @id @default(autoincrement())
-  user_id         Int?
-  membership_type Int?
-  start_date      DateTime? @db.Date
-  end_date        DateTime? @db.Date
-  price           Decimal?  @db.Decimal(10, 2)
-  status_id       Int?
-  payment_method  String?   @db.VarChar(20)
-  order_id        String?   @unique @db.VarChar(255)
+  membership_id    Int       @id @default(autoincrement())
+  user_id          Int?
+  membership_type  Int?
+  start_date       DateTime? @db.Date
+  end_date         DateTime? @db.Date
+  price            Decimal?  @db.Decimal(10, 2)
+  status_id        Int?
+  payment_method   String?   @db.VarChar(20)
+  order_id         String?   @unique @db.VarChar(255)
+  quantity         Int?
+  transaction_date DateTime  @default(now()) @db.DateTime(0)
 
   @@index([status_id], map: "status_id")
   @@index([user_id], map: "user_id")
+  @@index([membership_type], map: "fk_membership_type")
 }
 
 model schedule {
@@ -116,4 +119,23 @@ model secondarymuscles {
   muscle_name String? @db.VarChar(100)
 
   @@index([post_id], map: "fk_post_secondarymuscles")
+}
+
+model class_transaction {
+  class_transaction_id Int      @id @default(autoincrement())
+  user_id              Int
+  class_id             Int
+  amount_paid          Decimal  @db.Decimal(10, 2)
+  payment_date         DateTime @default(now()) @db.DateTime(0)
+  status_id            Int?     @db.TinyInt
+  payment_method       String?  @db.VarChar(20)
+  order_id             String?  @db.VarChar(255)
+}
+
+model membership_description {
+  membership_type Int     @id @default(autoincrement())
+  name            String  @db.VarChar(255)
+  description     String? @db.Text
+  price           Decimal @db.Decimal(10, 2)
+  duration        Int
 }
