@@ -24,7 +24,7 @@ export class PaymentService {
     const currentDate = new Date();
     currentDate.setHours(currentDate.getHours() + 7);
     
-    // Lấy thông tin membership type để biết duration và price
+    // Lấy thông tin membership type
     const membershipType = await this.prisma.membership_description.findUnique({
         where: {
             membership_type: data.membership_type
@@ -58,16 +58,18 @@ export class PaymentService {
 
     if (activeMembership) {
         if (data.membership_type === activeMembership.membership_type) {
+            // Nếu cùng loại membership, extend từ ngày hiện tại
             startDate = new Date(activeMembership.start_date);
             endDate = new Date(activeMembership.end_date);
             endDate.setMonth(endDate.getMonth() + totalMonths);
         } else {
+            // Nếu khác loại, bắt đầu sau khi membership hiện tại kết thúc
             startDate = new Date(activeMembership.end_date);
             endDate = new Date(startDate);
             endDate.setMonth(startDate.getMonth() + totalMonths);
-            data.status_id = 4;
         }
     } else {
+        // Nếu không có membership active, bắt đầu từ ngày hiện tại
         startDate = currentDate;
         endDate = new Date(currentDate);
         endDate.setMonth(currentDate.getMonth() + totalMonths);
@@ -87,7 +89,8 @@ export class PaymentService {
             order_id: `MEM${Date.now()}${data.user_id}`,
             quantity: quantity,
             price: totalPrice,
-            transaction_date: transactionDate
+            transaction_date: transactionDate,
+            status_id: 2 // Luôn bắt đầu với status Pending Payment
         }
     });
   }
@@ -150,7 +153,6 @@ export class PaymentService {
 
   async updateMembershipStatus(membershipId: number, statusId: number) {
     return await this.prisma.$transaction(async (prisma) => {
-        // Kiểm tra membership tồn tại
         const membership = await prisma.membership.findUnique({
             where: { membership_id: membershipId }
         });
@@ -244,7 +246,7 @@ export class PaymentService {
     return date;
   }
 
-  // Sửa phương thức getMembershipStatus
+  // Sửa phương thức getMembershipStatus để phản ánh logic mới
   async getMembershipStatus(userId: number) {
     try {
         const currentDate = this.getCurrentDateInGMT7();
@@ -252,7 +254,7 @@ export class PaymentService {
         const membership = await this.prisma.membership.findFirst({
             where: {
                 user_id: userId,
-                status_id: 1,
+                status_id: 1, // Chỉ lấy membership đã thanh toán
                 start_date: {
                     lte: currentDate
                 },
