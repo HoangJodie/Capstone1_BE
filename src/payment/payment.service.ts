@@ -6,7 +6,7 @@ import * as CryptoJS from 'crypto-js';
 import * as moment from 'moment';
 import * as qs from 'qs';
 import { CreateMembershipDto } from './dto/create-membership.dto';
-import { Cron } from '@nestjs/schedule';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 interface CreateZaloPayOrderParams {
   amount: number;
@@ -24,6 +24,24 @@ export class PaymentService {
     const currentDate = new Date();
     currentDate.setHours(currentDate.getHours() + 7);
     
+    // Kiểm tra xem đã có membership pending cùng loại chưa
+    const pendingMembership = await this.prisma.membership.findFirst({
+        where: {
+            user_id: data.user_id,
+            membership_type: data.membership_type,
+            status_id: 2 // Pending Payment
+        }
+    });
+
+    // Nếu đã có membership pending cùng loại, xóa nó đi
+    if (pendingMembership) {
+        await this.prisma.membership.delete({
+            where: {
+                membership_id: pendingMembership.membership_id
+            }
+        });
+    }
+    
     // Lấy thông tin membership type
     const membershipType = await this.prisma.membership_description.findUnique({
         where: {
@@ -35,14 +53,11 @@ export class PaymentService {
         throw new Error('Membership type not found');
     }
 
-    const quantity = data.quantity || 1;
-    const totalMonths = membershipType.duration * quantity;
-    const totalPrice = Number(membershipType.price) * quantity;
-
-    // Kiểm tra membership đang active
+    // Kiểm tra xem có membership active cùng loại không
     const activeMembership = await this.prisma.membership.findFirst({
         where: {
             user_id: data.user_id,
+            membership_type: data.membership_type,
             status_id: 1,
             end_date: {
                 gt: currentDate
@@ -53,26 +68,45 @@ export class PaymentService {
         }
     });
 
+    const quantity = data.quantity || 1;
+    const totalMonths = membershipType.duration * quantity;
+    const totalPrice = Number(membershipType.price) * quantity;
+
     let startDate: Date;
     let endDate: Date;
 
     if (activeMembership) {
-        if (data.membership_type === activeMembership.membership_type) {
-            // Nếu cùng loại membership, extend từ ngày hiện tại
-            startDate = new Date(activeMembership.start_date);
-            endDate = new Date(activeMembership.end_date);
-            endDate.setMonth(endDate.getMonth() + totalMonths);
-        } else {
-            // Nếu khác loại, bắt đầu sau khi membership hiện tại kết thúc
-            startDate = new Date(activeMembership.end_date);
+        // Nếu có membership active cùng loại, extend từ ngày kết thúc
+        startDate = new Date(activeMembership.start_date);
+        endDate = new Date(activeMembership.end_date);
+        endDate.setMonth(endDate.getMonth() + totalMonths);
+    } else {
+        // Nếu không có membership active cùng loại
+        // Kiểm tra xem có membership active khác loại không
+        const otherActiveMembership = await this.prisma.membership.findFirst({
+            where: {
+                user_id: data.user_id,
+                status_id: 1,
+                end_date: {
+                    gt: currentDate
+                }
+            },
+            orderBy: {
+                end_date: 'desc'
+            }
+        });
+
+        if (otherActiveMembership) {
+            // Nếu có membership active khác loại, bắt đầu sau khi nó kết thúc
+            startDate = new Date(otherActiveMembership.end_date);
             endDate = new Date(startDate);
             endDate.setMonth(startDate.getMonth() + totalMonths);
+        } else {
+            // Nếu không có membership active nào, bắt đầu từ ngày hiện tại
+            startDate = currentDate;
+            endDate = new Date(currentDate);
+            endDate.setMonth(currentDate.getMonth() + totalMonths);
         }
-    } else {
-        // Nếu không có membership active, bắt đầu từ ngày hiện tại
-        startDate = currentDate;
-        endDate = new Date(currentDate);
-        endDate.setMonth(currentDate.getMonth() + totalMonths);
     }
 
     // Đảm bảo ngày cuối tháng được tính đúng
@@ -81,7 +115,8 @@ export class PaymentService {
     const transactionDate = new Date();
     transactionDate.setHours(transactionDate.getHours() + 7);
 
-    return this.prisma.membership.create({
+    // Tạo membership mới
+    const newMembership = await this.prisma.membership.create({
         data: {
             ...data,
             start_date: startDate,
@@ -93,6 +128,30 @@ export class PaymentService {
             status_id: 2 // Luôn bắt đầu với status Pending Payment
         }
     });
+
+    // Tạo timeout để tự động chuyển sang failed sau 15 phút
+    setTimeout(async () => {
+        try {
+            const membership = await this.prisma.membership.findUnique({
+                where: { membership_id: newMembership.membership_id }
+            });
+
+            if (membership && membership.status_id === 2) {
+                const status = await this.checkOrderStatus(membership.order_id);
+                if (status.isPending) {
+                    await this.updateMembershipStatus(
+                        membership.membership_id,
+                        3 // Failed
+                    );
+                    console.log(`Membership ${membership.membership_id} timeout and marked as failed`);
+                }
+            }
+        } catch (error) {
+            console.error(`Error handling membership timeout ${newMembership.membership_id}:`, error);
+        }
+    }, 15 * 60 * 1000); // 15 phút
+
+    return newMembership;
   }
 
   async createZaloPayOrder(params: CreateZaloPayOrderParams) {
@@ -203,31 +262,45 @@ export class PaymentService {
         where: { order_id: orderId }
       });
         
-      if (membership && membership.status_id !== 1) {
+      if (membership && membership.status_id === 2) { // Chỉ xử lý nếu đang ở trạng thái pending
         let statusId;
+        
+        // Xử lý các trường hợp trả về từ ZaloPay
         switch(returnCode) {
-          case 1:
+          case 1: // Thanh toán thành công
             statusId = 1;
             break;
-          case 2:
-          case 3:
+          case 2: // Đang xử lý
+          case 3: // Đang chờ thanh toán
             statusId = 2;
+            break;
+          case -1: // ZaloPay đang bảo trì
+          case -2: // Order không tồn tại
+          case -3: // Order đã bị hủy
+          case -4: // Order đã hết hạn
+          case -5: // Order đã được thanh toán
+          case -6: // Order bị từ chối
+          case -7: // Order thất bại
+            statusId = 3;
             break;
           default:
             statusId = 3;
         }
         
-        await this.updateMembershipStatus(
-          membership.membership_id,
-          statusId
-        );
+        // Cập nhật trạng thái membership
+        if (statusId !== 2) { // Chỉ cập nhật nếu không phải đang pending
+          await this.updateMembershipStatus(
+            membership.membership_id,
+            statusId
+          );
+        }
       }
       
       return {
         code: returnCode,
         message: response.return_message,
         isSuccess: returnCode === 1,
-        isCancelled: returnCode === -2 || returnCode === -3,
+        isCancelled: returnCode === -2 || returnCode === -3 || returnCode === -4,
         isPending: returnCode === 2 || returnCode === 3,
         membershipId: membership?.membership_id,
         statusId: membership?.status_id
@@ -235,6 +308,18 @@ export class PaymentService {
 
     } catch (error) {
       console.error('Check order status error:', error);
+      // Nếu có lỗi khi gọi API, cũng chuyển sang status failed
+      const membership = await this.prisma.membership.findFirst({
+        where: { order_id: orderId }
+      });
+      
+      if (membership && membership.status_id === 2) {
+        await this.updateMembershipStatus(
+          membership.membership_id,
+          3 // Failed
+        );
+      }
+      
       throw new Error('Cannot check order status');
     }
   }
@@ -584,6 +669,55 @@ export class PaymentService {
             return 'Pending Activation';
         default:
             return 'Unknown';
+    }
+  }
+
+  // Thêm cron job để kiểm tra các giao dịch pending quá hạn
+  @Cron(CronExpression.EVERY_MINUTE)
+  async checkExpiredPendingMemberships() {
+    try {
+        const currentDate = this.getCurrentDateInGMT7();
+        
+        // Lấy tất cả membership đang pending và đã tạo quá 15 phút
+        const expiredTime = new Date(currentDate.getTime() - 15 * 60 * 1000); // 15 phút trước
+        
+        const expiredMemberships = await this.prisma.membership.findMany({
+            where: {
+                status_id: 2, // Pending Payment
+                transaction_date: {
+                    lt: expiredTime
+                }
+            }
+        });
+
+        console.log(`Found ${expiredMemberships.length} expired pending memberships`);
+
+        // Kiểm tra từng membership với ZaloPay và cập nhật status
+        for (const membership of expiredMemberships) {
+            try {
+                // Kiểm tra trạng thái với ZaloPay
+                const status = await this.checkOrderStatus(membership.order_id);
+                
+                // Nếu vẫn đang pending sau 15 phút, chuyển sang failed
+                if (status.isPending) {
+                    await this.updateMembershipStatus(
+                        membership.membership_id,
+                        3 // Failed
+                    );
+                    console.log(`Membership ${membership.membership_id} expired and marked as failed`);
+                }
+                
+            } catch (error) {
+                console.error(`Error checking membership ${membership.membership_id}:`, error);
+                // Nếu có lỗi khi kiểm tra, cũng chuyển sang failed
+                await this.updateMembershipStatus(
+                    membership.membership_id,
+                    3 // Failed
+                );
+            }
+        }
+    } catch (error) {
+        console.error('Check expired memberships error:', error);
     }
   }
 } 
