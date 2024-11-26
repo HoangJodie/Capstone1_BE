@@ -59,7 +59,7 @@ export class ClassService {
         data: {
           class_name: class_name,
           class_description: class_description,
-          status_id: 1, // Trạng thái lớp học mặc định
+          status_id: 2, // Trạng thái lớp học mặc định
           class_type: class_type, // class_type phải là số nguyên
           start_date: start_date, // start_date là kiểu Date
           end_date: end_date, // end_date là kiểu Date

@@ -160,7 +160,7 @@ export class PaymentService {
     console.log('Creating ZaloPay order:', params);
 
     const embedData = {
-      redirecturl: `${process.env.FRONTEND_URL}/payment-status?orderId=${orderId}`,
+      redirecturl: `${process.env.FRONTEND_URL}payment-status?orderId=${orderId}`,
       membership_id: membershipId,
     };
 
