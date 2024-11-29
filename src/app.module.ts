@@ -12,6 +12,7 @@ import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { ExerciseModule } from './exercise/exercise.module';
 import { UserClassModule } from './user_class/user_class.module';
 import { PaymentModule } from './payment/payment.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -26,7 +27,8 @@ import { PaymentModule } from './payment/payment.module';
     CloudinaryModule,
     ExerciseModule,
     UserClassModule,
-    PaymentModule
+    PaymentModule,
+    AiModule
   ],
   controllers: [AppController],
   providers: [AppService],
