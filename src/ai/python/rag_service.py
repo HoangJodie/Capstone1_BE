@@ -23,19 +23,24 @@ def load_documents():
     try:
         global _vectorstore_cache
         
-        # Nếu đã có cache, trả về luôn
+        # Đường dẫn cố định cho vector database
+        db_path = "C:/FlexFit/vector_db"
+        os.makedirs(db_path, exist_ok=True)
+        
+        print(f"\n=== VECTOR DATABASE INFO ===", file=sys.stderr)
+        print(f"Vector DB Path: {db_path}", file=sys.stderr)
+        
+        # Nếu đã có cache trong memory, sử dụng luôn
         if _vectorstore_cache is not None:
-            print("Sử dụng vectorstore từ memory cache...", file=sys.stderr)
+            print("Cache: Using memory cache", file=sys.stderr)
             return _vectorstore_cache
             
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-        documents_dir = os.path.join(base_dir, 'documents')
-        crawled_data_dir = os.path.join(documents_dir, 'crawled_data')
-        db_path = os.path.join(base_dir, 'chroma_db')
-        
-        # Kiểm tra xem có vectorstore cache trong disk không
-        if os.path.exists(db_path):
-            print("Đang load vectorstore từ disk cache...", file=sys.stderr)
+        # Kiểm tra xem có vector database trong disk không
+        db_file = os.path.join(db_path, "chroma.sqlite3")
+        if os.path.exists(db_file):
+            print(f"Status: Vector DB exists at {db_path}", file=sys.stderr)
+            print(f"DB File Size: {os.path.getsize(db_file)/1024/1024:.2f} MB", file=sys.stderr)
+            
             embeddings = HuggingFaceEmbeddings(
                 model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
             )
@@ -45,6 +50,13 @@ def load_documents():
             )
             return _vectorstore_cache
             
+        # Nếu chưa có, tạo mới vector database
+        print(f"Status: Creating new Vector DB at {db_path}", file=sys.stderr)
+        
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+        documents_dir = os.path.join(base_dir, 'documents')
+        crawled_data_dir = os.path.join(documents_dir, 'crawled_data')
+        
         print(f"Loading documents from: {documents_dir}", file=sys.stderr)
         
         # Tạo các thư mục nếu chưa tồn tại
@@ -115,24 +127,20 @@ def load_documents():
         if short_chunks:
             print(f"\nCảnh báo: Có {len(short_chunks)} chunks quá ngắn!", file=sys.stderr)
         
+        # Tạo và persist vector database
         embeddings = HuggingFaceEmbeddings(
             model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
         )
         
-        # Xóa db cũ
-        if os.path.exists(db_path):
-            import shutil
-            shutil.rmtree(db_path)
-        
-        # Tạo vectorstore với số lượng vectors phù hợp
         vectorstore = Chroma.from_documents(
             documents=texts,
             embedding=embeddings,
             persist_directory=db_path
         )
-        vectorstore.persist()  # Lưu vectorstore
-        print("\nĐã tạo và cache vectorstore", file=sys.stderr)
+        vectorstore.persist()  # Lưu xuống disk
+        
         _vectorstore_cache = vectorstore
+        print(f"Status: Created new Vector DB at {db_path}", file=sys.stderr)
         return vectorstore
         
     except Exception as e:
@@ -290,7 +298,7 @@ Chỉ trả lời tên route phù hợp nhất."""
             
             # Nếu không tìm thấy trong route hiện tại, tìm ở các route khác
             if not relevant_docs:
-                print(f"Không tìm thấy thông tin trong {route}, tìm kiếm ở các route khác...", file=sys.stderr)
+                print(f"Khng tìm thấy thông tin trong {route}, tìm kiếm ở các route khác...", file=sys.stderr)
                 # Thử tìm trong các route khác
                 other_routes = ["classes", "practice", "instructors", "membership"]
                 other_routes.remove(route)
