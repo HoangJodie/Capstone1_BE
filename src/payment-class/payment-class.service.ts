@@ -62,7 +62,7 @@ export class PaymentClassService {
     const { amount, orderId, transactionId, description, userId } = params;
 
     const embedData = {
-      redirecturl: `${process.env.FRONTEND_URL}payment-class-status?orderId=${orderId}`,
+      redirecturl: `${process.env.FRONTEND_URL}paymentClassResult?orderId=${orderId}`,
       transaction_id: transactionId,
     };
 
@@ -128,6 +128,15 @@ export class PaymentClassService {
     postData['mac'] = CryptoJS.HmacSHA256(data, ZaloPayConfig.key1).toString();
 
     try {
+      // Trước tiên lấy thông tin transaction
+      const transaction = await this.prisma.class_transaction.findFirst({
+        where: { order_id: orderId }
+      });
+
+      if (!transaction) {
+        throw new Error('Không tìm thấy thông tin giao dịch');
+      }
+
       const result = await axios.post(
         'https://sb-openapi.zalopay.vn/v2/query',
         qs.stringify(postData),
@@ -140,20 +149,16 @@ export class PaymentClassService {
 
       const response = result.data;
       const returnCode = response.return_code;
-
-      const transaction = await this.prisma.class_transaction.findFirst({
-        where: { order_id: orderId }
-      });
         
-      if (transaction && transaction.status_id === 2) {
+      if (transaction.status_id === 2) {
         let statusId;
         
         switch(returnCode) {
-          case 1: // Thanh toán thành công
+          case 1:
             statusId = 1;
             break;
-          case 2: // Đang xử lý
-          case 3: // Đang chờ thanh toán
+          case 2:
+          case 3:
             statusId = 2;
             break;
           default:
@@ -165,6 +170,8 @@ export class PaymentClassService {
             transaction.class_transaction_id,
             statusId
           );
+          // Cập nhật lại transaction sau khi update status
+          transaction.status_id = statusId;
         }
       }
       
@@ -174,13 +181,25 @@ export class PaymentClassService {
         isSuccess: returnCode === 1,
         isCancelled: returnCode < 0,
         isPending: returnCode === 2 || returnCode === 3,
-        transactionId: transaction?.class_transaction_id,
-        statusId: transaction?.status_id
+        transaction: {
+          ...transaction,
+          amount: transaction.amount_paid,
+          status_id: transaction.status_id,
+          class_transaction_id: transaction.class_transaction_id,
+          user_id: transaction.user_id,
+          class_id: transaction.class_id,
+          order_id: transaction.order_id,
+          payment_method: transaction.payment_method,
+          payment_date: transaction.payment_date,
+        }
       };
 
     } catch (error) {
       console.error('Check order status error:', error);
-      throw new Error('Cannot check order status');
+      if (error.message === 'Không tìm thấy thông tin giao dịch') {
+        throw new Error('Thiếu thông tin giao dịch');
+      }
+      throw new Error('Không thể kiểm tra trạng thái đơn hàng');
     }
   }
 } 
