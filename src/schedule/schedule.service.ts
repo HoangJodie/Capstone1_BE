@@ -383,7 +383,7 @@ export class ScheduleService {
 
             if (conflict) {
                 throw new HttpException(
-                    `Lịch h���c bị trùng vào ngày ${date.toLocaleDateString('vi-VN')}`,
+                    `Lịch học bị trùng vào ngày ${date.toLocaleDateString('vi-VN')}`,
                     HttpStatus.CONFLICT
                 );
             }
@@ -478,4 +478,72 @@ export class ScheduleService {
     //         );
     //     }
     // }
+
+    async getUserActiveClasses(userId: number) {
+        return await this.prisma.user_class.findMany({
+            where: {
+                user_id: userId,
+                status_id: 2 // Chỉ lấy các lớp có status_id = 2
+            }
+        });
+    }
+
+    async getSchedulesForClasses(classIds: number[]) {
+        return await this.prisma.schedule.findMany({
+            where: {
+                class_id: {
+                    in: classIds
+                }
+            }
+        });
+    }
+
+    async getActiveClassUsers(classId: number) {
+        return await this.prisma.user_class.findMany({
+            where: {
+                class_id: classId,
+                status_id: 2 // Chỉ lấy các user đang hoạt động trong lớp
+            }
+        });
+    }
+
+    async getUserInfo(userId: number) {
+        return await this.prisma.user.findUnique({
+            where: { user_id: userId },
+            select: {
+                user_id: true,
+                name: true
+            }
+        });
+    }
+
+    async getPTActiveClasses(ptId: number) {
+        return await this.prisma.renamedclass.findMany({
+            where: {
+                pt_id: ptId,
+                status_id: 2 // Chỉ lấy các lớp đang hoạt động
+            },
+            select: {
+                class_id: true
+            }
+        });
+    }
+
+    async getClassInfo(classId: number) {
+        const classInfo = await this.prisma.renamedclass.findUnique({
+            where: {
+                class_id: classId
+            },
+            select: {
+                class_id: true,
+                class_name: true
+            }
+        });
+        
+        if (!classInfo) {
+            throw new NotFoundException(`Không tìm thấy lớp với ID ${classId}`);
+        }
+        
+        return classInfo;
+    }
 }

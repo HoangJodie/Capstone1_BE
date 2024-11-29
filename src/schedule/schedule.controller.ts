@@ -185,4 +185,165 @@ export class ScheduleController {
             );
         }
     }
+
+    // Thêm endpoint mới
+    // Trong controller
+@Post('check-schedule-conflict')
+@UseGuards(JwtAuthGuard)
+async checkScheduleConflict(
+    @Body() scheduleData: {
+        user_id: number;
+        days: Date;
+        start_hour: Date;
+        end_hour: Date;
+    }
+) {
+    try {
+        const checkDate = new Date(scheduleData.days);
+        const checkStartHour = new Date(scheduleData.start_hour);
+        const checkEndHour = new Date(scheduleData.end_hour);
+
+        // Lấy danh sách các lớp học của user có status_id = 2
+        const userClasses = await this.ScheduleService.getUserActiveClasses(
+            scheduleData.user_id
+        );
+
+        // Lấy tất cả lịch học của các lớp mà user đã đăng ký
+        const schedules = await this.ScheduleService.getSchedulesForClasses(
+            userClasses.map((uc) => uc.class_id),
+        );
+
+        // Mảng lưu trữ các lớp bị xung đột
+        const conflictingClasses = [];
+
+        // Kiểm tra xung đột
+        for (const schedule of schedules) {
+            const scheduleDate = new Date(schedule.days);
+            const scheduleStart = new Date(schedule.start_hour);
+            const scheduleEnd = new Date(schedule.end_hour);
+
+            // So sánh ngày (chỉ so sánh năm, tháng, ngày)
+            const isSameDay = 
+                scheduleDate.getFullYear() === checkDate.getFullYear() &&
+                scheduleDate.getMonth() === checkDate.getMonth() &&
+                scheduleDate.getDate() === checkDate.getDate();
+
+            if (isSameDay) {
+                // Chuyển đổi thời gian sang số phút để so sánh
+                const checkStartMinutes = checkStartHour.getHours() * 60 + checkStartHour.getMinutes();
+                const checkEndMinutes = checkEndHour.getHours() * 60 + checkEndHour.getMinutes();
+                const scheduleStartMinutes = scheduleStart.getHours() * 60 + scheduleStart.getMinutes();
+                const scheduleEndMinutes = scheduleEnd.getHours() * 60 + scheduleEnd.getMinutes();
+
+                // Kiểm tra xung đột thời gian
+                const conflict =
+                    (checkStartMinutes >= scheduleStartMinutes && checkStartMinutes < scheduleEndMinutes) ||
+                    (checkEndMinutes > scheduleStartMinutes && checkEndMinutes <= scheduleEndMinutes) ||
+                    (checkStartMinutes <= scheduleStartMinutes && checkEndMinutes >= scheduleEndMinutes);
+
+                if (conflict) {
+                    // Lấy thông tin lớp học
+                    const classInfo = await this.ScheduleService.getClassInfo(schedule.class_id);
+                    if (classInfo) {
+                        conflictingClasses.push({
+                            class_id: schedule.class_id,
+                            class_name: classInfo.class_name,
+                            schedule_time: {
+                                days: schedule.days,
+                                start_hour: schedule.start_hour,
+                                end_hour: schedule.end_hour,
+                            },
+                        });
+                    }
+                }
+            }
+        }
+
+        return {
+            isAvailable: conflictingClasses.length === 0,
+            conflictingClasses: conflictingClasses
+        };
+
+    } catch (error) {
+        throw new HttpException(
+            error.message || 'Lỗi khi kiểm tra lịch học',
+            error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+    }
+}
+
+    // Thêm endpoint mới
+    @Post('check-class-schedule-conflict')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('3') // Chỉ cho phép PT kiểm tra
+    async checkClassScheduleConflict(
+        @Body() scheduleData: {
+            class_id: number;
+            days: Date;
+            start_hour: Date;
+            end_hour: Date;
+        }
+    ) {
+        try {
+            // Chuyển đổi chuỗi ngày giờ thành đối tượng Date
+            const checkDate = new Date(scheduleData.days);
+            const checkStartHour = new Date(scheduleData.start_hour);
+            const checkEndHour = new Date(scheduleData.end_hour);
+
+            // Lấy danh sách user trong lớp có status_id = 2 (đang hoạt động)
+            const classUsers = await this.ScheduleService.getActiveClassUsers(
+                scheduleData.class_id,
+            );
+
+            // Kiểm tra từng user
+            const conflicts = [];
+            for (const user of classUsers) {
+                const userClasses = await this.ScheduleService.getUserActiveClasses(user.user_id);
+                const schedules = await this.ScheduleService.getSchedulesForClasses(
+                    userClasses.map(uc => uc.class_id)
+                );
+
+                const conflictSchedules = schedules.filter(schedule => {
+                    const scheduleDate = new Date(schedule.days);
+                    const scheduleStart = new Date(schedule.start_hour);
+                    const scheduleEnd = new Date(schedule.end_hour);
+
+                    const isSameDay = scheduleDate.toDateString() === checkDate.toDateString();
+
+                    if (isSameDay) {
+                        return (
+                            (checkStartHour >= scheduleStart && checkStartHour < scheduleEnd) ||
+                            (checkEndHour > scheduleStart && checkEndHour <= scheduleEnd) ||
+                            (checkStartHour <= scheduleStart && checkEndHour >= scheduleEnd)
+                        );
+                    }
+                    return false;
+                });
+
+                if (conflictSchedules.length > 0) {
+                    const userInfo = await this.ScheduleService.getUserInfo(user.user_id);
+                    conflicts.push({
+                        user_id: user.user_id,
+                        name: userInfo.name,
+                        conflicting_schedules: conflictSchedules.map(schedule => ({
+                            days: schedule.days,
+                            start_hour: schedule.start_hour,
+                            end_hour: schedule.end_hour
+                        }))
+                    });
+                }
+            }
+
+            return {
+                hasConflicts: conflicts.length > 0,
+                conflictingUsers: conflicts
+            };
+
+        } catch (error) {
+            throw new HttpException(
+                error.message || 'Lỗi khi kiểm tra lịch học',
+                error.status || HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
+    }
 }
