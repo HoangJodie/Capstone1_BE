@@ -219,7 +219,7 @@ Hãy phân tích:
    - PT, huấn luyện viên -> instructors
    - Gói tập, membership, giá -> membership
    - Không liên quan -> none
-   - Thông tin chung về gym -> gym_info
+   - Thông tin chung về gym(VD: giờ mở cửa, địa chỉ, thông tin liên hệ) -> gym_info
 
 Ví dụ:
 - "How to register?" -> guide
@@ -273,7 +273,7 @@ Chỉ trả lời tên route phù hợp nhất."""
             docs = vectorstore.similarity_search(query, k=5)
             route_docs = [doc for doc in docs if route in str(doc.metadata.get("source", "")).lower()]
             
-            if not route_docs:  # Nếu chưa có dữ liệu của route này
+            if not route_docs:  # Nếu ch��a có dữ liệu của route này
                 print(f"Tiến hành crawl route: {route}", file=sys.stderr)
                 crawl_success = crawl_website(route)
                 if crawl_success:
@@ -298,10 +298,13 @@ Chỉ trả lời tên route phù hợp nhất."""
             
             # Nếu không tìm thấy trong route hiện tại, tìm ở các route khác
             if not relevant_docs:
-                print(f"Khng tìm thấy thông tin trong {route}, tìm kiếm ở các route khác...", file=sys.stderr)
+                print(f"Không tìm thấy thông tin trong {route}, tìm kiếm ở các route khác...", file=sys.stderr)
                 # Thử tìm trong các route khác
-                other_routes = ["classes", "practice", "instructors", "membership"]
-                other_routes.remove(route)
+                other_routes = ["classes", "practice", "instructors", "membership", "guide", "gym_info"]
+                
+                # Kiểm tra xem route có trong danh sách không trước khi xóa
+                if route in other_routes:
+                    other_routes.remove(route)
                 
                 for other_route in other_routes:
                     other_docs = [

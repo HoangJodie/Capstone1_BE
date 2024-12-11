@@ -1,5 +1,5 @@
 /* eslint-disable prettier/prettier */
-import { Controller, Get, Param, Post, Body, Patch, Delete, HttpException, HttpStatus, UseInterceptors, UploadedFile, InternalServerErrorException, UseGuards, Req, Query } from '@nestjs/common';
+import { Controller, Get, Param, Post, Body, Patch, Delete, HttpException, HttpStatus, UseInterceptors, UploadedFile, InternalServerErrorException, UseGuards, Req, Query, DefaultValuePipe, ParseIntPipe } from '@nestjs/common';
 import { ClassService } from './class.service';
 import { Renamedclass } from '@prisma/client'; // Sử dụng mô hình Renamedclass
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
@@ -31,6 +31,18 @@ export class ClassController {
     }
   }
 
+  @Get('paginated')
+  async getClassesWithPagination(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+  ) {
+    try {
+      return await this.classService.getClassesWithPagination(page, limit);
+    } catch (error) {
+      throw new HttpException('Unable to fetch classes.', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
   @Get('owned')
 @UseGuards(JwtAuthGuard) // Bảo vệ endpoint bằng guard
 async getClassesOwnedByPT(@Req() req): Promise<Renamedclass[]> 
@@ -46,6 +58,7 @@ async getClassesOwnedByPT(@Req() req): Promise<Renamedclass[]>
     throw new HttpException('Unable to fetch classes owned by PT.', HttpStatus.INTERNAL_SERVER_ERROR);
   }
 }
+
 
   
   // Thêm endpoint mới sau các endpoint Get hiện có
