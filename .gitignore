@@ -54,3 +54,18 @@ pids
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Python
+python_env/
+__pycache__/
+*.pyc
+chroma_db/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# AI related
+documents/*
+!documents/.gitkeep

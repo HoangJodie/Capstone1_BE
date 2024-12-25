@@ -507,4 +507,71 @@ export class ClassService {
     }
   }
 
+  async getClassesWithPagination(page: number, limit: number): Promise<any> {
+    try {
+      const skip = (page - 1) * limit;
+      
+      // Lấy tổng số lớp học
+      const totalClasses = await this.prisma.renamedclass.count();
+      
+      // Lấy danh sách lớp học có phân trang
+      const classes = await this.prisma.renamedclass.findMany({
+        skip,
+        take: limit,
+        select: {
+          class_id: true,
+          class_name: true,
+          class_description: true,
+          status_id: true,
+          class_type: true,
+          fee: true,
+          start_date: true,
+          end_date: true,
+          image_url: true,
+          pt_id: true,
+          maxAttender: true,
+          class_subject: true,
+        }
+      });
+
+      // Xử lý thêm thông tin cho từng lớp
+      const classesWithDetails = await Promise.all(
+        classes.map(async (cls) => {
+          const currentAttender = await this.prisma.user_class.count({
+            where: {
+              class_id: cls.class_id,
+              status_id: 1
+            }
+          });
+
+          const trainer = await this.prisma.user.findUnique({
+            where: { user_id: cls.pt_id },
+            select: { name: true }
+          });
+
+          return {
+            ...cls,
+            fee: Number(cls.fee),
+            trainer_name: trainer?.name || 'Chưa có PT',
+            currentAttender,
+            remainingSlots: cls.maxAttender - currentAttender
+          };
+        })
+      );
+
+      return {
+        data: classesWithDetails,
+        meta: {
+          total: totalClasses,
+          page,
+          limit,
+          totalPages: Math.ceil(totalClasses / limit)
+        }
+      };
+    } catch (error) {
+      console.error('Error fetching paginated classes:', error);
+      throw new InternalServerErrorException('Unable to fetch classes.');
+    }
+  }
+
 }

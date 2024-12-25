@@ -79,4 +79,15 @@ async deleteExerciseById(@Param('postId') postId: string): Promise<{ message: st
   // ) {
   //   return this.exerciseService.searchExercises(bodyPart, equipment, target);
   // }
+
+  // Thêm endpoint mới để lấy bài tập theo trang
+  @Get('paginated')
+  async getPaginatedExercises(
+    @Query('page') page: string = '1', // Mặc định là trang 1 nếu không được chỉ định
+    @Query('limit') limit: string = '9' // Mặc định là 9 bài tập mỗi trang
+  ) {
+    const pageNumber = parseInt(page);
+    const limitNumber = parseInt(limit);
+    return this.exerciseService.getPaginatedExercises(pageNumber, limitNumber);
+  }
 }

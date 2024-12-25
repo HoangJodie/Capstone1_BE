@@ -301,4 +301,29 @@ export class ExerciseService {
   //     },
   //   });
   // }
+
+  async getPaginatedExercises(page: number, limit: number) {
+    const skip = (page - 1) * limit;
+    
+    const [exercises, total] = await Promise.all([
+      this.prisma.exercisepost.findMany({
+        skip,
+        take: limit,
+        orderBy: {
+          post_id: 'asc',
+        },
+      }),
+      this.prisma.exercisepost.count(),
+    ]);
+
+    return {
+      data: exercises,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
 }

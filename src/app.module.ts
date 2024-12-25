@@ -13,6 +13,7 @@ import { ExerciseModule } from './exercise/exercise.module';
 import { UserClassModule } from './user_class/user_class.module';
 import { PaymentModule } from './payment/payment.module';
 import { PaymentClassModule } from './payment-class/payment-class.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -28,7 +29,8 @@ import { PaymentClassModule } from './payment-class/payment-class.module';
     ExerciseModule,
     UserClassModule,
     PaymentModule,
-    PaymentClassModule
+    PaymentClassModule,
+    AiModule
   ],
   controllers: [AppController],
   providers: [AppService],
