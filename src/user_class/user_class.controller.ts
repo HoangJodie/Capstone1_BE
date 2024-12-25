@@ -1,7 +1,10 @@
   /* eslint-disable prettier/prettier */
-  import { Controller, Post, Delete, Patch, Get, Param, Body, Query, NotFoundException } from '@nestjs/common';
+  import { Controller, Post, Delete, Patch, Get, Param, Body, Query, NotFoundException, Req, UseGuards } from '@nestjs/common';
   import { UserClassService } from './user_class.service';
   import { HttpException, HttpStatus } from '@nestjs/common';
+  import { JwtAuthGuard } from 'src/auth/guards/jwt.guard';
+  import { Request } from 'express';
+ 
 
   @Controller('user-class')
   export class UserClassController {
@@ -115,5 +118,17 @@ async getUsersByClassId(@Param('classId') classId: string): Promise<any> {
       @Query('classId') classId: string,
     ) {
       return this.userClassService.deleteUserFromClass(+parseInt(userId, 10), +parseInt(classId, 10));
+    }
+    
+    // Thêm endpoint mới vào controller
+    @Get('UserOwned')
+    @UseGuards(JwtAuthGuard) 
+    async getClassesByUserId(@Req() req: Request): Promise<any> {
+      try {
+        const userId = req.user['user_id'];
+        return await this.userClassService.getClassesByUserId(userId);
+      } catch (error) {
+        throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+      }
     }
   }
