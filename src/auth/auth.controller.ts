@@ -1,15 +1,19 @@
-import { Controller, Post, Body, UseGuards, Get, Req, Res } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Get, Req, Res, HttpException, HttpStatus } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LocalGuard } from './guards/local.guard';
 import { JwtAuthGuard } from './guards/jwt.guard';
 import { Request, Response } from 'express';
 import { Roles } from './decorators/roles.decorators';
 import { RolesGuard } from './guards/roles.guards';
+import { MailerService } from '@nestjs-modules/mailer';
 
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) { }
+  constructor(
+    private readonly authService: AuthService,
+    private readonly mailerService: MailerService,
+  ) { }
 
   // Đăng nhập và tạo token
   // auth.controller.ts
@@ -76,5 +80,36 @@ async login(@Req() req: Request, @Res() res: Response) {
   @Roles('1') // Chỉ những người có role_id '1' mới truy cập được
   getAdminDashboard(@Req() req: Request) {
     return `Welcome to admin dashboard`; // Trả về thông điệp chào mừng
+  }
+
+  @Post('forgot-password')
+  async forgotPassword(@Body('email') email: string) {
+    try {
+      const result = await this.authService.createPasswordResetToken(email);
+      return { 
+        status: HttpStatus.OK,
+        message: 'Email khôi phục mật khẩu đã được gửi' 
+      };
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @Post('reset-password')
+  async resetPassword(
+    @Body() resetData: { token: string; newPassword: string }
+  ) {
+    try {
+      await this.authService.resetPassword(
+        resetData.token,
+        resetData.newPassword
+      );
+      return { 
+        status: HttpStatus.OK,
+        message: 'Mật khẩu đã được cập nhật thành công' 
+      };
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
   }
 }

@@ -10,3 +10,4 @@ import { UserClassController } from './user_class.controller';
   providers: [DatabaseService, UserClassService],
 })
 export class UserClassModule {}
+ 

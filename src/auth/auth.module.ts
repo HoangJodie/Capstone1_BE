@@ -8,6 +8,8 @@ import { LocalStrategy } from './strategies/local.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RolesGuard } from './guards/roles.guards';
 import { DatabaseModule } from 'src/database/database.module';
+import { MailerModule } from '@nestjs-modules/mailer';
+import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
 
 @Module({
   imports: [
@@ -19,6 +21,24 @@ import { DatabaseModule } from 'src/database/database.module';
         expiresIn: AuthModule.getAccessTokenExpiration(), // Lấy thời gian hết hạn từ phương thức
       },
     }),
+    MailerModule.forRoot({
+      transport: {
+        service: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false,
+        auth: {
+          user: process.env.GMAIL_USER,
+          pass: process.env.GMAIL_APP_PASSWORD,
+        },
+        tls: {
+          rejectUnauthorized: false
+        }
+      },
+      defaults: {
+        from: `"No Reply" <${process.env.GMAIL_USER}>`,
+      },
+    }),
   ],
   providers: [AuthService, LocalStrategy, JwtStrategy, RolesGuard],
   controllers: [AuthController],
@@ -26,7 +46,7 @@ import { DatabaseModule } from 'src/database/database.module';
 })
 export class AuthModule {
   // Thời gian hết hạn của access token
-  static readonly accessTokenExpiration = '1h'; // Thay đổi theo nhu cầu
+  static readonly accessTokenExpiration = '5h'; // Thay đổi theo nhu cầu
   // Thời gian hết hạn của refresh token
   static readonly refreshTokenExpiration = '7d'; // Thay đổi theo nhu cầu
 

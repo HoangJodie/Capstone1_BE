@@ -14,6 +14,7 @@ import { UserClassModule } from './user_class/user_class.module';
 import { PaymentModule } from './payment/payment.module';
 import { PaymentClassModule } from './payment-class/payment-class.module';
 import { AiModule } from './ai/ai.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -30,7 +31,8 @@ import { AiModule } from './ai/ai.module';
     UserClassModule,
     PaymentModule,
     PaymentClassModule,
-    AiModule
+    AiModule,
+    DashboardModule
   ],
   controllers: [AppController],
   providers: [AppService],
