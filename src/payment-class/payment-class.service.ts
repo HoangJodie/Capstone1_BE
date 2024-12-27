@@ -62,7 +62,7 @@ export class PaymentClassService {
     const { amount, orderId, transactionId, description, userId } = params;
 
     const embedData = {
-      redirecturl: `${process.env.FRONTEND_URL}paymentClassResult?orderId=${orderId}`,
+      redirecturl: `${process.env.FRONTEND_URL}/paymentClassResult?orderId=${orderId}`,
       transaction_id: transactionId,
     };
 

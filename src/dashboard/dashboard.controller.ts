@@ -16,8 +16,13 @@ export class DashboardController {
   }
 
   @Get('membership-analytics')
-  async getMembershipAnalytics() {
-    return this.dashboardService.getMembershipAnalytics();
+  async getMembershipAnalytics(
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    return this.dashboardService.getMembershipAnalytics(start, end);
   }
 
   @Get('class-analytics')

@@ -1,7 +1,8 @@
-import { Controller, Get, Param, Query, Body, Post,Delete, UseInterceptors, UploadedFile, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Param, Query, Body, Post,Delete, UseInterceptors, UploadedFile, NotFoundException, Patch, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ExerciseService } from './exercise.service';
 import { CreateExerciseDto } from './dto/exercise.dto';
+import { UpdateExerciseDto } from './dto/update-exercise.dto';
 
 @Controller('exercises')
 export class ExerciseController {
@@ -32,7 +33,6 @@ export class ExerciseController {
 async deleteExerciseById(@Param('postId') postId: string): Promise<{ message: string }> {
     return await this.exerciseService.deleteExerciseByPostId(Number(postId));
 }
-
 
   // Danh sách body parts
   @Get('bodyparts')
@@ -89,5 +89,39 @@ async deleteExerciseById(@Param('postId') postId: string): Promise<{ message: st
     const pageNumber = parseInt(page);
     const limitNumber = parseInt(limit);
     return this.exerciseService.getPaginatedExercises(pageNumber, limitNumber);
+  }
+
+  @Patch(':postId')
+  @UseInterceptors(FileInterceptor('file'))
+  async updateExercise(
+    @Param('postId') postId: string,
+    @Body() body: any,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    console.log('=== PATCH REQUEST RECEIVED ===');
+    console.log('Post ID:', postId);
+    console.log('Raw body:', body);
+
+    // Parse JSON string từ trường data
+    let updateExerciseDto: UpdateExerciseDto;
+    try {
+      updateExerciseDto = JSON.parse(body.data);
+      console.log('Parsed Update DTO:', updateExerciseDto);
+    } catch (error) {
+      throw new BadRequestException('Invalid JSON data');
+    }
+    
+    console.log('File:', file?.originalname);
+    
+    const result = await this.exerciseService.updateExercise(
+      Number(postId), 
+      updateExerciseDto, 
+      file
+    );
+    
+    console.log('=== PATCH REQUEST COMPLETED ===');
+    console.log('Result:', result);
+    
+    return result;
   }
 }

@@ -342,18 +342,18 @@ async editClass(
   }
 
   // Xóa một lớp
-  @Delete(':id')
-  async deleteClass(@Param('id') id: string): Promise<Renamedclass> {
-    const classId = parseInt(id, 10);
-    if (isNaN(classId)) {
-      throw new HttpException('Invalid class_id provided.', HttpStatus.BAD_REQUEST);
-    }
-    try {
-      return await this.classService.deleteClass(classId);
-    } catch (error) {
-      console.error(error);
-      throw new HttpException('Unable to delete class.', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
+  // @Delete(':id')
+  // async deleteClass(@Param('id') id: string): Promise<Renamedclass> {
+  //   const classId = parseInt(id, 10);
+  //   if (isNaN(classId)) {
+  //     throw new HttpException('Invalid class_id provided.', HttpStatus.BAD_REQUEST);
+  //   }
+  //   try {
+  //     return await this.classService.deleteClass(classId);
+  //   } catch (error) {
+  //     console.error(error);
+  //     throw new HttpException('Unable to delete class.', HttpStatus.INTERNAL_SERVER_ERROR);
+  //   }
+  // }
 
 }

@@ -219,48 +219,66 @@ export class ClassService {
   }
   
   // Xóa một lớp
-  async deleteClass(class_id: number): Promise<Renamedclass> {
-    try {
-      // Thực hiện xóa theo thứ tự để tránh vi phạm ràng buộc khóa ngoại
-      
-      // 1. Xóa tất cả các bản ghi trong bảng schedule liên quan đến lớp học
-      await this.prisma.schedule.deleteMany({
-        where: { class_id },
-      });
+  // async deleteClass(class_id: number): Promise<Renamedclass> {
+  //   try {
+  //     // Kiểm tra xem lớp học có tồn tại không
+  //     const classToDelete = await this.prisma.renamedclass.findUnique({
+  //       where: { class_id },
+  //     });
 
-      // 2. Xóa tất cả các bản ghi trong bảng user_class liên quan đến lớp học
-      await this.prisma.user_class.deleteMany({
-        where: { class_id },
-      });
+  //     if (!classToDelete) {
+  //       throw new NotFoundException('Không tìm thấy lớp học');
+  //     }
 
-      // 3. Lấy thông tin lớp học trước khi xóa để lấy image_url
-      const classToDelete = await this.prisma.renamedclass.findUnique({
-        where: { class_id },
-      });
+  //     // Xóa theo thứ tự để tránh vi phạm ràng buộc khóa ngoại
+  //     await this.prisma.$transaction(async (prisma) => {
+  //       // 1. Xóa các bản ghi trong registration_queue
+  //       await prisma.registrationQueue.deleteMany({
+  //         where: { class_id },
+  //       });
 
-      if (!classToDelete) {
-        throw new NotFoundException('Không tìm thấy lớp học');
-      }
+  //       // 2. Xóa các bản ghi trong bảng schedule
+  //       await prisma.schedule.deleteMany({
+  //         where: { class_id },
+  //       });
 
-      // 4. Xóa lớp học từ bảng renamedclass
-      const deletedClass = await this.prisma.renamedclass.delete({
-        where: { class_id },
-      });
+  //       // 3. Xóa các bản ghi trong bảng user_class
+  //       await prisma.user_class.deleteMany({
+  //         where: { class_id },
+  //       });
 
-      // 5. Nếu có image_url, xóa ảnh từ Cloudinary
-      if (classToDelete.image_url) {
-        const publicId = classToDelete.image_url.split('/').pop()?.split('.')[0];
-        if (publicId) {
-          await this.cloudinaryService.deleteImage(publicId);
-        }
-      }
+  //       // 4. Xóa lớp học từ bảng renamedclass
+  //       const deletedClass = await prisma.renamedclass.delete({
+  //         where: { class_id },
+  //       });
 
-      return deletedClass;
-    } catch (error) {
-      console.error('Lỗi khi xóa lớp học:', error);
-      throw new InternalServerErrorException('Không thể xóa lớp học. Vui lòng thử lại sau.');
-    }
-  }
+  //       // 5. Xóa ảnh từ Cloudinary nếu có
+  //       if (classToDelete.image_url) {
+  //         const publicId = classToDelete.image_url.split('/').pop()?.split('.')[0];
+  //         if (publicId) {
+  //           await this.cloudinaryService.deleteImage(publicId);
+  //         }
+  //       }
+
+  //       return deletedClass;
+  //     });
+
+  //     return classToDelete;
+  //   } catch (error) {
+  //     console.error('Lỗi chi tiết khi xóa lớp học:', error);
+  //     if (error.code === 'P2003') {
+  //       // Log thêm thông tin về bảng nào đang gây ra lỗi
+  //       console.error('Bảng gây lỗi:', error.meta?.modelName);
+  //       console.error('Field gây lỗi:', error.meta?.field_name);
+  //       throw new InternalServerErrorException(
+  //         `Không thể xóa lớp học vì còn dữ liệu liên quan trong bảng ${error.meta?.modelName}`
+  //       );
+  //     }
+  //     throw new InternalServerErrorException(
+  //       'Không thể xóa lớp học. Vui lòng đảm bảo không còn dữ liệu liên quan.'
+  //     );
+  //   }
+  // }
 
   // Lấy thông tin lớp
   async getClassInfo(class_id: number): Promise<any> {
@@ -421,6 +439,10 @@ export class ClassService {
       throw new InternalServerErrorException('Unable to fetch classes owned by PT.');
     }
   }
+  
+  
+  
+  
   
   
   

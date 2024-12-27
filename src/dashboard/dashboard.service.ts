@@ -46,14 +46,27 @@ export class DashboardService {
     };
   }
 
-  async getMembershipAnalytics() {
-    const currentDate = new Date();
+  async getMembershipAnalytics(startDate: Date, endDate: Date) {
+    // Tính tổng thu nhập từ membership trong khoảng thời gian
+    const totalRevenue = await this.prisma.membership.aggregate({
+      where: {
+        transaction_date: {
+          gte: startDate.toISOString(),
+          lte: endDate.toISOString(),
+        },
+        status_id: 1, // Trạng thái thành công
+      },
+      _sum: {
+        price: true,
+      },
+    });
 
-    // Đếm số lượng member mới trong tháng này
+    // Đếm số lượng member mới trong khoảng thời gian
     const newMembers = await this.prisma.membership.count({
       where: {
         start_date: {
-          gte: new Date(currentDate.getFullYear(), currentDate.getMonth(), 1),
+          gte: startDate,
+          lte: endDate,
         },
       },
     });
@@ -62,15 +75,22 @@ export class DashboardService {
     const activeMembers = await this.prisma.membership.count({
       where: {
         end_date: {
-          gte: currentDate,
+          gte: new Date(), // Vẫn giữ nguyên logic check member đang hoạt động
         },
         status_id: 1,
       },
     });
 
-    // Thống kê theo loại membership
+    // Thống kê theo loại membership trong khoảng thời gian
     const membershipStats = await this.prisma.membership.groupBy({
       by: ['membership_type'],
+      where: {
+        transaction_date: {
+          gte: startDate.toISOString(),
+          lte: endDate.toISOString(),
+        },
+        status_id: 1,
+      },
       _count: {
         user_id: true,
       },
@@ -80,9 +100,14 @@ export class DashboardService {
     });
 
     return {
+      totalRevenue: Number(totalRevenue._sum.price) || 0,
       newMembers,
       activeMembers,
       membershipStats,
+      period: {
+        startDate,
+        endDate,
+      },
     };
   }
 
