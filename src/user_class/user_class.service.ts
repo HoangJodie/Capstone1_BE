@@ -179,4 +179,29 @@ async updateStatus(userId: number, classId: number, statusId: number) {
       },
     });
   }
+
+  async getClassesByUserId(userId: number) {
+    try {
+      const userClasses = await this.databaseService.user_class.findMany({
+        where: {
+          user_id: userId
+        },
+        select: {
+          class_id: true
+        }
+      });
+
+      // Chuyển đổi kết quả thành mảng class_id
+      const classIds = userClasses.map(uc => uc.class_id);
+      
+      return {
+        userId,
+        classIds
+      };
+    } catch (error) {
+      console.error('Lỗi trong getClassesByUserId:', error);
+      throw new Error(`Không thể lấy danh sách lớp học: ${error.message}`);
+    }
+  }
+
 }

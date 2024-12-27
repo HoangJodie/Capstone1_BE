@@ -13,6 +13,8 @@ import { ExerciseModule } from './exercise/exercise.module';
 import { UserClassModule } from './user_class/user_class.module';
 import { PaymentModule } from './payment/payment.module';
 import { PaymentClassModule } from './payment-class/payment-class.module';
+// import { AiModule } from './ai/ai.module';
+import { RegistrationQueueModule } from './queues/registration-queue/registration-queue.module';
 import { AiModule } from './ai/ai.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 
@@ -31,6 +33,8 @@ import { DashboardModule } from './dashboard/dashboard.module';
     UserClassModule,
     PaymentModule,
     PaymentClassModule,
+    RegistrationQueueModule,
+    // AiModule
     AiModule,
     DashboardModule
   ],
