@@ -273,7 +273,7 @@ Chỉ trả lời tên route phù hợp nhất."""
             docs = vectorstore.similarity_search(query, k=5)
             route_docs = [doc for doc in docs if route in str(doc.metadata.get("source", "")).lower()]
             
-            if not route_docs:  # Nếu ch��a có dữ liệu của route này
+            if not route_docs:  # Nếu chưa có dữ liệu của route này
                 print(f"Tiến hành crawl route: {route}", file=sys.stderr)
                 crawl_success = crawl_website(route)
                 if crawl_success:

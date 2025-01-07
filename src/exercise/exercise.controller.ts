@@ -25,8 +25,8 @@ export class ExerciseController {
 
   @Get(':postId')
   async getExerciseById(@Param('postId') postId: string): Promise<CreateExerciseDto> {
-    const exercise = await this.exerciseService.getExerciseByPostId(Number(postId)); // Chuyển đổi postId thành number
-    return exercise; // Trả về bài tập
+    const exercise = await this.exerciseService.getExerciseByPostId(Number(postId));
+    return exercise; 
   }
 
   @Delete(':postId')
@@ -52,33 +52,7 @@ async deleteExerciseById(@Param('postId') postId: string): Promise<{ message: st
     return this.exerciseService.getDistinctTargets();
   }
 
-  // // Danh sách bài tập theo body part
-  // @Get('bodyparts/:body_part')
-  // getExercisesByBodyPart(@Param('body_part') bodyPart: string) {
-  //   return this.exerciseService.getExercisesByBodyPart(bodyPart);
-  // }
 
-  // // Danh sách bài tập theo equipment
-  // @Get('equipment/:equipment')
-  // getExercisesByEquipment(@Param('equipment') equipment: string) {
-  //   return this.exerciseService.getExercisesByEquipment(equipment);
-  // }
-
-  // // Danh sách bài tập theo target muscle
-  // @Get('targets/:target')
-  // getExercisesByTarget(@Param('target') target: string) {
-  //   return this.exerciseService.getExercisesByTarget(target);
-  // }
-
-  // // Kết hợp tìm kiếm theo nhiều tiêu chí
-  // @Get('search')
-  // searchExercises(
-  //   @Query('body_part') bodyPart?: string,
-  //   @Query('equipment') equipment?: string,
-  //   @Query('target') target?: string,
-  // ) {
-  //   return this.exerciseService.searchExercises(bodyPart, equipment, target);
-  // }
 
   // Thêm endpoint mới để lấy bài tập theo trang
   @Get('paginated')

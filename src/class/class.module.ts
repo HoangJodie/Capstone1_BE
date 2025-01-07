@@ -9,7 +9,7 @@ import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
   controllers: [ClassController],
-  providers: [ClassService], // Cung cấp GoogleDriveService ở đây
-  imports: [DatabaseModule, CloudinaryModule, AuthModule], // Đảm bảo đã import DatabaseModule
+  providers: [ClassService], 
+  imports: [DatabaseModule, CloudinaryModule, AuthModule], 
 })
 export class ClassModule {}

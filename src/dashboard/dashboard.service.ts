@@ -14,7 +14,7 @@ export class DashboardService {
           gte: startDate.toISOString(),
           lte: endDate.toISOString(),
         },
-        status_id: 1, // Giả sử 1 là trạng thái thành công
+        status_id: 1, //1 là trạng thái thành công
       },
       _sum: {
         price: true,

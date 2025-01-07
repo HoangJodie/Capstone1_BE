@@ -5,8 +5,8 @@ import { DatabaseService } from 'src/database/database.service';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 
 @Module({
-  controllers: [ExerciseController],  // Khai báo controller
-  providers: [ExerciseService, DatabaseService, CloudinaryService],  // Khai báo các service cần thiết
+  controllers: [ExerciseController],  
+  providers: [ExerciseService, DatabaseService, CloudinaryService],  
 })
 
 export class ExerciseModule {}

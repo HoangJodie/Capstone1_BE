@@ -46,9 +46,9 @@ import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handleba
 })
 export class AuthModule {
   // Thời gian hết hạn của access token
-  static readonly accessTokenExpiration = '5h'; // Thay đổi theo nhu cầu
+  static readonly accessTokenExpiration = '1h'; 
   // Thời gian hết hạn của refresh token
-  static readonly refreshTokenExpiration = '7d'; // Thay đổi theo nhu cầu
+  static readonly refreshTokenExpiration = '7d'; 
 
   // Cung cấp thời gian cho access token
   static getAccessTokenExpiration() {
