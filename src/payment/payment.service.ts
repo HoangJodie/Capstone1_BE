@@ -7,6 +7,8 @@ import * as moment from 'moment';
 import * as qs from 'qs';
 import { CreateMembershipDto } from './dto/create-membership.dto';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { CreateMembershipTypeDto } from './dto/create-membership-type.dto';
+import { UpdateMembershipTypeDto } from './dto/update-membership-type.dto';
 
 interface CreateZaloPayOrderParams {
   amount: number;
@@ -129,7 +131,7 @@ export class PaymentService {
         }
     });
 
-    // Tạo timeout để tự động chuyển sang failed sau 15 phút
+    // Tạo timeout để tự động chuy���n sang failed sau 15 phút
     setTimeout(async () => {
         try {
             const membership = await this.prisma.membership.findUnique({
@@ -719,5 +721,108 @@ export class PaymentService {
     } catch (error) {
         console.error('Check expired memberships error:', error);
     }
+  }
+
+  // Lấy chi tiết một membership type
+  async getMembershipTypeById(membershipType: number) {
+    const type = await this.prisma.membership_description.findUnique({
+        where: { membership_type: membershipType }
+    });
+
+    if (!type) {
+        throw new Error('Membership type not found');
+    }
+
+    return {
+        ...type,
+        description: type.description.split(',').map(desc => desc.trim())
+    };
+  }
+
+  // Tạo membership type mới
+  async createMembershipType(createDto: CreateMembershipTypeDto) {
+    // Kiểm tra xem membership type đã tồn tại chưa
+    const existingType = await this.prisma.membership_description.findUnique({
+        where: { membership_type: createDto.membership_type }
+    });
+
+    if (existingType) {
+        throw new Error('Membership type already exists');
+    }
+
+    // Chuyển mảng description thành chuỗi
+    const descriptionString = createDto.description.join(', ');
+
+    const newType = await this.prisma.membership_description.create({
+        data: {
+            membership_type: createDto.membership_type,
+            name: createDto.name,
+            description: descriptionString,
+            price: createDto.price,
+            duration: createDto.duration
+        }
+    });
+
+    return {
+        ...newType,
+        description: newType.description.split(',').map(desc => desc.trim())
+    };
+  }
+
+  // Cập nhật membership type
+  async updateMembershipType(
+      membershipType: number,
+      updateDto: UpdateMembershipTypeDto
+  ) {
+    // Kiểm tra xem membership type có tồn tại không
+    const existingType = await this.prisma.membership_description.findUnique({
+        where: { membership_type: membershipType }
+    });
+
+    if (!existingType) {
+        throw new Error('Membership type not found');
+    }
+
+    // Xử lý description nếu có trong updateDto
+    let descriptionString;
+    if (updateDto.description) {
+        descriptionString = updateDto.description.join(', ');
+    }
+
+    const updatedType = await this.prisma.membership_description.update({
+        where: { membership_type: membershipType },
+        data: {
+            name: updateDto.name,
+            description: descriptionString,
+            price: updateDto.price,
+            duration: updateDto.duration
+        }
+    });
+
+    return {
+        ...updatedType,
+        description: updatedType.description.split(',').map(desc => desc.trim())
+    };
+  }
+
+  // Xóa membership type
+  async deleteMembershipType(membershipType: number) {
+    // Kiểm tra xem có membership nào đang sử dụng type này không
+    const existingMemberships = await this.prisma.membership.findFirst({
+        where: { 
+            membership_type: membershipType,
+            status_id: {
+                in: [1, 2, 4] // Active, Pending Payment, Pending Activation
+            }
+        }
+    });
+
+    if (existingMemberships) {
+        throw new Error('Cannot delete membership type that is in use');
+    }
+
+    await this.prisma.membership_description.delete({
+        where: { membership_type: membershipType }
+    });
   }
 } 

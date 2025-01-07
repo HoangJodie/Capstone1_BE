@@ -1,10 +1,12 @@
-import { Controller,Post,Body,HttpException,HttpStatus,UseGuards,Get,Param,Req,BadRequestException,Query} from '@nestjs/common';
+import { Controller,Post,Body,HttpException,HttpStatus,UseGuards,Get,Param,Req,BadRequestException,Query,Put,Delete} from '@nestjs/common';
 import { PaymentService } from './payment.service';
 import { JwtAuthGuard } from '../auth/guards/jwt.guard';
 import { Request } from 'express';
 import { AuthService } from '../auth/auth.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { DatabaseService } from '../database/database.service';
+import { CreateMembershipTypeDto } from './dto/create-membership-type.dto';
+import { UpdateMembershipTypeDto } from './dto/update-membership-type.dto';
 
 @Controller('payment')
 export class PaymentController {
@@ -418,6 +420,82 @@ export class PaymentController {
             console.error('Get bill detail error:', error);
             throw new HttpException(
                 error.message || 'Không thể lấy thông tin chi tiết hóa đơn',
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+
+    // API lấy chi tiết một membership type
+    @Get('admin/membership-types/:id')
+    @UseGuards(JwtAuthGuard)
+    async getMembershipTypeById(@Param('id') id: string) {
+        try {
+            const membershipType = await this.paymentService.getMembershipTypeById(
+                Number(id)
+            );
+            return membershipType;
+        } catch (error) {
+            console.error('Get membership type error:', error);
+            throw new HttpException(
+                'Không thể lấy thông tin gói membership',
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+
+    // API tạo membership type mới
+    @Post('admin/membership-types')
+    @UseGuards(JwtAuthGuard)
+    async createMembershipType(@Body() createDto: CreateMembershipTypeDto) {
+        try {
+            const newMembershipType = await this.paymentService.createMembershipType(
+                createDto
+            );
+            return newMembershipType;
+        } catch (error) {
+            console.error('Create membership type error:', error);
+            throw new HttpException(
+                'Không thể tạo gói membership mới',
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+
+    // API cập nhật membership type
+    @Put('admin/membership-types/:id')
+    @UseGuards(JwtAuthGuard)
+    async updateMembershipType(
+        @Param('id') id: string,
+        @Body() updateDto: UpdateMembershipTypeDto
+    ) {
+        try {
+            const updatedMembershipType = await this.paymentService.updateMembershipType(
+                Number(id),
+                updateDto
+            );
+            return updatedMembershipType;
+        } catch (error) {
+            console.error('Update membership type error:', error);
+            throw new HttpException(
+                'Không thể cập nhật gói membership',
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+
+    // API xóa membership type
+    @Delete('admin/membership-types/:id')
+    @UseGuards(JwtAuthGuard)
+    async deleteMembershipType(@Param('id') id: string) {
+        try {
+            await this.paymentService.deleteMembershipType(Number(id));
+            return {
+                message: 'Xóa gói membership thành công'
+            };
+        } catch (error) {
+            console.error('Delete membership type error:', error);
+            throw new HttpException(
+                'Không thể xóa gói membership',
                 HttpStatus.INTERNAL_SERVER_ERROR
             );
         }

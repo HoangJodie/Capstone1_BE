@@ -140,39 +140,54 @@ export class ScheduleService {
         console.log(`Start date: ${startDate.toISOString()}`);
         console.log(`End date: ${endDate.toISOString()}`);
     
-        // Đặt giờ, phút, giây, mili giây về 0 cho startDate
-        startDate.setHours(0, 0, 0, 0); 
-        // Đặt giờ đến cuối ngày cho endDate
-        endDate.setHours(23, 59, 59, 999); 
+        // Tạo bản sao của startDate và endDate
+        const queryStartDate = new Date(startDate);
+        const queryEndDate = new Date(endDate);
     
-        // Truy vấn bảng user_class để tìm các class_id mà PT (user_id) quản lý
-        const managedClasses = await this.prisma.user_class.findMany({
+        // Đặt giờ, phút, giây, mili giây về 0 cho startDate 
+        queryStartDate.setHours(0, 0, 0, 0);
+        // Đặt giờ đến cuối ngày cho endDate
+        queryEndDate.setHours(23, 59, 59, 999);
+    
+        // Lấy danh sách lớp học mà PT đang phụ trách
+        const ptClasses = await this.prisma.renamedclass.findMany({
             where: {
-                user_id: ptId,
-                status_id: 1, // Giả sử status_id = 1 đại diện cho các PT đang quản lý lớp
+                pt_id: ptId,
+                status_id: 2, // Lớp đang hoạt động
             },
             select: {
                 class_id: true,
             },
         });
     
-        // Lấy danh sách class_id mà PT quản lý
-        const managedClassIds = managedClasses.map((cls) => cls.class_id);
+        const ptClassIds = ptClasses.map((cls) => cls.class_id);
     
-        // Truy vấn bảng schedule để lấy lịch trình của các lớp PT quản lý
+        console.log(`PT Class IDs: ${JSON.stringify(ptClassIds)}`);
+    
+        // Sửa lại query để lấy chính xác lịch trong khoảng thời gian
         const schedules = await this.prisma.schedule.findMany({
             where: {
-                days: {
-                    gte: startDate,
-                    lte: endDate,
-                },
-                class_id: {
-                    in: managedClassIds,
-                },
+                AND: [
+                    {
+                        days: {
+                            gte: queryStartDate,
+                            lte: queryEndDate,
+                        },
+                    },
+                    {
+                        class_id: {
+                            in: ptClassIds,
+                        },
+                    }
+                ]
             },
+            orderBy: {
+                days: 'asc'
+            }
         });
     
-        console.log(`Schedules fetched: ${JSON.stringify(schedules)}`);
+        console.log(`Found ${schedules.length} schedules between ${queryStartDate.toISOString()} and ${queryEndDate.toISOString()}`);
+        console.log(`Raw schedules: ${JSON.stringify(schedules)}`);
     
         // Tiếp tục xử lý lịch trình như trước
         const result = await Promise.all(
@@ -235,39 +250,54 @@ export class ScheduleService {
         console.log(`Start date: ${startDate.toISOString()}`);
         console.log(`End date: ${endDate.toISOString()}`);
     
-        // Đặt giờ, phút, giây, mili giây về 0 cho startDate
-        startDate.setHours(0, 0, 0, 0); 
-        // Đặt giờ đến cuối ngày cho endDate
-        endDate.setHours(23, 59, 59, 999); 
+        // Tạo bản sao của startDate và endDate
+        const queryStartDate = new Date(startDate);
+        const queryEndDate = new Date(endDate);
     
-        // Truy vấn bảng user_class để tìm các class_id mà user tham gia
+        // Đặt giờ, phút, giây, mili giây về 0 cho startDate
+        queryStartDate.setHours(0, 0, 0, 0);
+        // Đặt giờ đến cuối ngày cho endDate  
+        queryEndDate.setHours(23, 59, 59, 999);
+    
+        // Lấy danh sách lớp học mà user đang tham gia
         const enrolledClasses = await this.prisma.user_class.findMany({
             where: {
                 user_id: userId,
-                status_id: 1, // Giả sử status_id = 1 đại diện cho user đang tham gia lớp
+                status_id: 2, // User đang tham gia lớp học
             },
             select: {
                 class_id: true,
             },
         });
     
-        // Lấy danh sách class_id mà user tham gia
         const enrolledClassIds = enrolledClasses.map((cls) => cls.class_id);
     
-        // Truy vấn bảng schedule để lấy lịch trình của các lớp user tham gia
+        console.log(`User enrolled class IDs: ${JSON.stringify(enrolledClassIds)}`);
+    
+        // Sửa lại query để lấy chính xác lịch trong khoảng thời gian
         const schedules = await this.prisma.schedule.findMany({
             where: {
-                days: {
-                    gte: startDate,
-                    lte: endDate,
-                },
-                class_id: {
-                    in: enrolledClassIds,
-                },
+                AND: [
+                    {
+                        days: {
+                            gte: queryStartDate,
+                            lte: queryEndDate,
+                        },
+                    },
+                    {
+                        class_id: {
+                            in: enrolledClassIds,
+                        },
+                    }
+                ]
             },
+            orderBy: {
+                days: 'asc'
+            }
         });
     
-        console.log(`Schedules fetched: ${JSON.stringify(schedules)}`);
+        console.log(`Found ${schedules.length} schedules between ${queryStartDate.toISOString()} and ${queryEndDate.toISOString()}`);
+        console.log(`Raw schedules: ${JSON.stringify(schedules)}`);
     
         // Tiếp tục xử lý lịch trình như trước
         const result = await Promise.all(
@@ -414,7 +444,7 @@ export class ScheduleService {
     //         const ptClasses = await this.prisma.renamedclass.findMany({
     //             where: {
     //                 pt_id: ptId,
-    //                 status_id: 1  // Chỉ lấy lớp đang hoạt động
+    //                 status_id: 1  // Chỉ lấy lớp ��ang hoạt động
     //             }
     //         });
 
@@ -502,7 +532,7 @@ export class ScheduleService {
         return await this.prisma.user_class.findMany({
             where: {
                 class_id: classId,
-                status_id: 2 // Chỉ lấy các user đang hoạt động trong lớp
+                status_id: 2 // Chỉ l���y các user đang hoạt động trong lớp
             }
         });
     }
